@@ -1,0 +1,9 @@
+{
+  "name": "tablero-inventarios-formulacion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tablero de inventarios ABC — Formulación, con publicación compartida vía Netlify Blobs (sin tokens expuestos en el navegador).",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
