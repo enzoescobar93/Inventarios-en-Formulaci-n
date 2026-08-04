@@ -33,7 +33,12 @@ export default async (req) => {
       updatedAt: new Date().toISOString(),
       count: body.materiales.length,
       filename: body.meta && body.meta.filename ? body.meta.filename : null,
+      fx: body.meta && body.meta.fx ? body.meta.fx : null,
     });
+
+    if (Array.isArray(body.ajustes) && body.ajustes.length > 0) {
+      await store.setJSON("ajustes-top10", body.ajustes);
+    }
 
     return new Response(
       JSON.stringify({ ok: true, count: body.materiales.length }),
