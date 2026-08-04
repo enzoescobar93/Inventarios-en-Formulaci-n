@@ -109,6 +109,9 @@ table.dt tbody tr:hover td{background:var(--bg2)}
 .prog{height:6px;border-radius:3px;background:var(--bg3);overflow:hidden;display:inline-block;vertical-align:middle}
 .pf{height:100%;border-radius:3px}
 .empty-row{text-align:center;color:var(--text3);padding:20px;font-size:12px}
+.acc-input{width:100%;min-width:150px;font:inherit;font-size:11px;color:var(--text);background:transparent;border:none;border-bottom:1px dashed var(--border2);padding:3px 2px;outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.acc-input:hover{border-bottom-color:var(--text2)}
+.acc-input:focus{border-bottom:1px solid var(--blue);background:var(--blue-bg)}
 @media(max-width:700px){.kgrid,.kgrid3{grid-template-columns:1fr 1fr}.crow,.igrid{grid-template-columns:1fr}.header{flex-direction:column}}
 
 .cal-wrap{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--rad-lg);padding:18px;margin-bottom:14px}
@@ -406,8 +409,14 @@ const CAL_B = ["Jul-26", "Sep-26", "Nov-26", "Ene-27", "Mar-27", "May-27"];
 const CAL_C = ["Ago-26", "Nov-26", "Feb-27", "May-27"];
 const CAL_KEY = 'conteos_checks_v1';
 const MAT_KEY = 'conteos_material_checks_v1';
+const ACC_KEY = 'alertas_acciones_v1';
 let calState = {};  // {'A-Jun-26': true, 'B-Jul-26': false, ...}
 let matState = {};  // {'127877.001|Jun-26': true, ...}
+let accState = {};  // {'A1|417713.001': 'Nota escrita por el usuario', ...}
+function accKey(tabla, mat){ return tabla+'|'+mat; }
+function escAttr(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 function calShouldCount(cls, mes) {
   if (cls === 'A') return true;
   if (cls === 'B') return CAL_B.includes(mes);
@@ -633,6 +642,16 @@ function dF(d,colored){
   return `<span style="${c}">${d.toFixed(1)}</span>`;
 }
 const bM=m=>`<span class="badge b${m.toLowerCase()}">${m}</span>`;
+function accInput(tabla,mat,defaultText){
+  const saved=accState[accKey(tabla,mat)];
+  const val=(saved!==undefined&&saved!==null)?saved:defaultText;
+  return `<input type="text" class="acc-input" data-tabla="${tabla}" data-mat="${mat}" value="${escAttr(val)}" onchange="setAccion(this)">`;
+}
+function setAccion(el){
+  const k=accKey(el.dataset.tabla,el.dataset.mat);
+  accState[k]=el.value;
+  syncSave();
+}
 function setTb(id,html){const t=document.getElementById(id);if(t)t.querySelector('tbody').innerHTML=html||`<tr><td colspan="9" class="empty-row">Sin resultados</td></tr>`;}
 function mkCh(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
 
@@ -706,9 +725,9 @@ function render(){
 
   setTb('tDiff',filt.filter(m=>m.m1!==m.m2).map(m=>`<tr><td style="font-family:monospace;font-size:10px">${m.c}</td><td>${m.d}</td><td>${bM(m.m1)}</td><td>${bM(m.m2)}</td></tr>`).join(''));
   setTb('tClaseA',filt.filter(m=>m.m1==='A').map(m=>`<tr><td style="font-family:monospace;font-size:10px">${m.c}</td><td>${m.d}</td><td style="font-size:11px">${m.g}</td><td>${m.u}</td><td style="text-align:right">${fn(m.s)}</td><td style="text-align:right">${usd(Math.round(m.v))}</td><td style="text-align:right">${usd(Math.round(m.vu||0))}</td><td style="text-align:right">${dF(m.dias,true)}</td><td>${bM(m.m1)}</td><td>${bM(m.m2)}</td></tr>`).join(''));
-  setTb('tA1',crit.length?crit.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td style="text-align:right">${fn(m.s)}</td><td style="text-align:right">${usd(Math.round(m.v))}</td><td><span class="pill pr">${m.dias.toFixed(1)} días</span></td><td style="text-align:right">${fn(m.movim)}</td><td style="font-size:11px;color:#a32d2d">Revisar reposición urgente</td></tr>`).join(''):'');
-  setTb('tA2',sinMov.length?sinMov.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td>${m.u}</td><td style="text-align:right">${fn(m.movim)}</td><td>${bM(m.m1)}</td><td>${bM(m.m2)}</td><td style="font-size:11px;color:#a32d2d">Confirmar si discontinuado</td></tr>`).join(''):'');
-  setTb('tA3',inmov.length?inmov.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td style="text-align:right">${fn(m.s)}</td><td style="text-align:right">${usd(Math.round(m.v))}</td><td style="font-size:11px;color:#854f0b">Evaluar baja / reclasificar</td></tr>`).join(''):'');
+  setTb('tA1',crit.length?crit.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td style="text-align:right">${fn(m.s)}</td><td style="text-align:right">${usd(Math.round(m.v))}</td><td><span class="pill pr">${m.dias.toFixed(1)} días</span></td><td style="text-align:right">${fn(m.movim)}</td><td>${accInput('A1',m.c,'Revisar reposición urgente')}</td></tr>`).join(''):'');
+  setTb('tA2',sinMov.length?sinMov.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td>${m.u}</td><td style="text-align:right">${fn(m.movim)}</td><td>${bM(m.m1)}</td><td>${bM(m.m2)}</td><td>${accInput('A2',m.c,'Confirmar si discontinuado')}</td></tr>`).join(''):'');
+  setTb('tA3',inmov.length?inmov.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td style="text-align:right">${fn(m.s)}</td><td style="text-align:right">${usd(Math.round(m.v))}</td><td>${accInput('A3',m.c,'Evaluar baja / reclasificar')}</td></tr>`).join(''):'');
   setTb('tMat',filt.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.c}</td><td>${m.d}</td><td style="font-size:11px">${m.g}</td><td>${m.u}</td><td style="text-align:right">${fn(m.s)}</td><td style="text-align:right">${usd(Math.round(m.v))}</td><td style="text-align:right">${usd(Math.round(m.vu||0))}</td><td style="text-align:right">${dF(m.dias,true)}</td><td>${bM(m.m1)}</td><td>${bM(m.m2)}</td></tr>`).join(''));
   renderConteos();
 }
@@ -804,8 +823,9 @@ function showPage(p,btn){
 loadSharedMateriales();
 
 // ── CALENDARIO DE CHECKS COMPARTIDOS ─────────────────────
-// (CAL_MESES, CAL_B, CAL_C, CAL_KEY, MAT_KEY, calState, matState, calShouldCount, calKey, matKey
-//  ya están declarados arriba, antes del primer render, para que estén disponibles desde el inicio)
+// (CAL_MESES, CAL_B, CAL_C, CAL_KEY, MAT_KEY, ACC_KEY, calState, matState, accState,
+//  calShouldCount, calKey, matKey, accKey ya están declarados arriba, antes del primer
+//  render, para que estén disponibles desde el inicio)
 
 function calSetSync(state, msg) {
   const dot = document.getElementById('calDot');
@@ -819,7 +839,7 @@ const LOCAL_BACKUP_KEY = 'conteos_local_backup_v1';
 
 function localBackupSave() {
   try {
-    localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({[CAL_KEY]: calState, [MAT_KEY]: matState, saved: new Date().toISOString()}));
+    localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify({[CAL_KEY]: calState, [MAT_KEY]: matState, [ACC_KEY]: accState, saved: new Date().toISOString()}));
   } catch(e) { /* localStorage no disponible, se ignora */ }
 }
 function localBackupLoad() {
@@ -838,8 +858,10 @@ async function calLoad() {
       const meta = await r.json();
       calState = meta[CAL_KEY] || {};
       matState = meta[MAT_KEY] || {};
+      accState = meta[ACC_KEY] || {};
       calRender();
       renderConteos();
+      render();
       const fecha = meta['conteos_updated'] || '';
       calSetSync('ok', 'Sincronizado' + (fecha ? ' · ' + fecha : ''));
       matSetSync('ok', 'Sincronizado' + (fecha ? ' · ' + fecha : ''));
@@ -848,20 +870,22 @@ async function calLoad() {
       try { detail = (await r.text()).slice(0,150); } catch(e2) {}
       console.error('calLoad: respuesta no OK', r.status, r.statusText, detail);
       const local = localBackupLoad();
-      if (local) { calState = local[CAL_KEY] || {}; matState = local[MAT_KEY] || {}; }
+      if (local) { calState = local[CAL_KEY] || {}; matState = local[MAT_KEY] || {}; accState = local[ACC_KEY] || {}; }
       calSetSync('err', 'Error cargando (' + r.status + ') — ver consola' + (local ? ' · usando copia local' : ''));
       matSetSync('err', 'Error cargando (' + r.status + ') — ver consola' + (local ? ' · usando copia local' : ''));
       calRender();
       renderConteos();
+      render();
     }
   } catch(e) {
     console.error('calLoad: excepción', e);
     const local = localBackupLoad();
-    if (local) { calState = local[CAL_KEY] || {}; matState = local[MAT_KEY] || {}; }
+    if (local) { calState = local[CAL_KEY] || {}; matState = local[MAT_KEY] || {}; accState = local[ACC_KEY] || {}; }
     calSetSync('err', 'Sin conexión' + (local ? ' · usando copia local' : ' — estado vacío'));
     matSetSync('err', 'Sin conexión' + (local ? ' · usando copia local' : ' — estado vacío'));
     calRender();
     renderConteos();
+    render();
   }
 }
 
@@ -871,7 +895,7 @@ async function syncSave() {
   localBackupSave(); // guarda siempre una copia local primero, por las dudas
   try {
     const now = new Date().toLocaleString('es-AR', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const payload = {[CAL_KEY]: calState, [MAT_KEY]: matState, conteos_updated: now};
+    const payload = {[CAL_KEY]: calState, [MAT_KEY]: matState, [ACC_KEY]: accState, conteos_updated: now};
     const r = await fetch('/api/save-conteos', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
