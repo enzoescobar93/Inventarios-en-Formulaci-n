@@ -161,7 +161,7 @@ table.dt tbody tr:hover td{background:var(--bg2)}
   </div>
   <div class="header-meta">
     <strong id="hFecha">Junio 2026</strong>
-    Última actualización<br>FX: 1 USD = 1.398 ARS
+    Última actualización<br>FX: 1 USD = <input type="number" id="fxInput" value="1398" step="0.001" min="0.001" style="width:78px;font-size:12px;padding:2px 5px;border:0.5px solid var(--border2);border-radius:4px;background:var(--bg);color:var(--text);text-align:right" onchange="setFX(this.value)" title="Tipo de cambio usado para convertir Valor Stock (ARS) a USD en la próxima carga de Excel"> ARS
   </div>
 </div>
 
@@ -216,7 +216,7 @@ table.dt tbody tr:hover td{background:var(--bg2)}
 <!-- RESUMEN -->
 <div id="page-resumen" class="page active">
   <div class="kgrid kgrid3">
-    <div class="kpi"><div class="kpi-label">Valor total stock</div><div class="kpi-val" id="kValor">—</div><div class="kpi-sub">USD · valorización SAP · FX 1398</div></div>
+    <div class="kpi"><div class="kpi-label">Valor total stock</div><div class="kpi-val" id="kValor">—</div><div class="kpi-sub" id="kValorSub">USD · valorización SAP · FX 1398</div></div>
     <div class="kpi"><div class="kpi-label">Materiales activos</div><div class="kpi-val" id="kActivos">—</div><div class="kpi-sub" id="kActivosSub">—</div></div>
     <div class="kpi danger"><div class="kpi-label">Alertas críticas</div><div class="kpi-val" id="kAlertas">—</div><div class="kpi-sub">cobertura · rotura · inmovilizado</div></div>
   </div>
@@ -238,10 +238,10 @@ table.dt tbody tr:hover td{background:var(--bg2)}
     <div class="sw"><table class="dt" id="tTop5"><thead><tr><th>#</th><th>Código</th><th>Descripción</th><th style="text-align:right">Valor USD</th><th>% del filtro</th></tr></thead><tbody></tbody></table></div>
   </div>
   <div class="card">
-    <div class="card-title">Consumo mensual — Top 5 materiales por valor (KG)</div>
-    <div class="card-sub">Abr 2025 – May 2026 · Los 5 materiales de mayor costo unitario</div>
-    <div class="leg" id="legConsumo" style="margin-bottom:12px"></div>
-    <div style="position:relative;height:240px"><canvas id="cConsumo"></canvas></div>
+    <div class="card-title">Top 10 materiales más ajustados — SAP 701/702</div>
+    <div class="card-sub">Según el último Excel publicado · Mayor volumen de ajuste acumulado (positivo + negativo)</div>
+    <div class="leg" id="legAjustes" style="margin-bottom:12px"></div>
+    <div style="position:relative;height:300px"><canvas id="cAjustes"></canvas></div>
   </div>
 </div>
 
@@ -298,7 +298,7 @@ table.dt tbody tr:hover td{background:var(--bg2)}
       <tbody></tbody>
     </table>
   </div>
-  <p class="fn">* Días cob. = Stock ÷ (Movim. ÷ 432d). Score ABC = 50% cobertura + 50% consumo valorizado. Alerta cobertura: días &lt; 15 sin umbral de valor. FX 1.398 ARS/USD.</p>
+  <p class="fn">* Días cob. = Stock ÷ (Movim. ÷ 432d). Score ABC = 50% cobertura + 50% consumo valorizado. Alerta cobertura: días &lt; 15 sin umbral de valor. <span id="fnFX">FX 1.398 ARS/USD.</span></p>
 </div>
 
 <!-- CONTEOS -->
@@ -380,7 +380,25 @@ table.dt tbody tr:hover td{background:var(--bg2)}
 
 </div>
 <script>
-const FX=1398;
+let FX = parseFloat(localStorage.getItem('formulacion_fx')) || 1398;
+
+function fxDisp(){ return FX.toLocaleString('es-AR',{minimumFractionDigits:3,maximumFractionDigits:3}); }
+function refreshFXUI(){
+  const inp = document.getElementById('fxInput');
+  if(inp && document.activeElement!==inp) inp.value = FX;
+  const kv = document.getElementById('kValorSub');
+  if(kv) kv.textContent = 'USD · valorización SAP · FX '+fxDisp();
+  const fn = document.getElementById('fnFX');
+  if(fn) fn.textContent = 'FX '+fxDisp()+' ARS/USD.';
+}
+function setFX(v){
+  const n = parseFloat(v);
+  if(!n || n<=0){ refreshFXUI(); return; }
+  FX = n;
+  try{ localStorage.setItem('formulacion_fx', FX); }catch(e){}
+  refreshFXUI();
+}
+refreshFXUI();
 
 // ── Estado compartido de conteos (calendario + detalle por código) ──
 const CAL_MESES = ["Jun-26", "Jul-26", "Ago-26", "Sep-26", "Oct-26", "Nov-26", "Dic-26", "Ene-27", "Feb-27", "Mar-27", "Abr-27", "May-27"];
@@ -400,7 +418,7 @@ function calKey(cls, mes) { return cls + '-' + mes; }
 function matKey(codigo, mes) { return codigo + '|' + mes; }
 
 const BASE=[{"c": "417713.001", "d": "RM Sodium Hypochloride 140 g/l", "g": "Pesticida&Antimicrob", "u": "KG", "s": 6374.739, "v": 703.75, "vu": 0.1104, "dias": 0.1, "movim": 26614061.544, "m1": "A", "m2": "A"}, {"c": "128114.001", "d": "RM Linear Alkylbenzene Sulfonic Acid 95%", "g": "Surfactantes", "u": "KG", "s": 53478.461, "v": 166014.68, "vu": 3.1043, "dias": 45.43, "movim": 508500.632, "m1": "A", "m2": "A"}, {"c": "243082.001", "d": "RM Ethoxylated Lauryl Alcohol 10 EO 90%", "g": "Surfactantes", "u": "KG", "s": 46463.319, "v": 135265.92, "vu": 2.9112, "dias": 47.31, "movim": 424310.932, "m1": "A", "m2": "A"}, {"c": "519551.001", "d": "RM Frag Panther RE 953 Mod 1 6216190", "g": "Fragancias", "u": "KG", "s": 3875.04, "v": 52593.96, "vu": 13.5725, "dias": 38.5, "movim": 43476.4, "m1": "A", "m2": "A"}, {"c": "132668.001", "d": "RM Hydrogen Peroxide 60%", "g": "Pesticida&Antimicrob", "u": "KG", "s": 15298.393, "v": 14165.34, "vu": 0.9259, "dias": 15.98, "movim": 413551.85, "m1": "A", "m2": "A"}, {"c": "519500.001", "d": "RM Frag 1200 HBA Super LPV MXB BBT MOD 5", "g": "Fragancias", "u": "KG", "s": 7694.36, "v": 85793.49, "vu": 11.1502, "dias": 84.03, "movim": 39554.72, "m1": "A", "m2": "A"}, {"c": "517549.002", "d": "RM LaurylDimthylamineOxide30%w/EDTA BULK", "g": "Surfactantes", "u": "KG", "s": 9137.658, "v": 19154.81, "vu": 2.0962, "dias": 23.09, "movim": 170953.305, "m1": "A", "m2": "A"}, {"c": "510357.001", "d": "RM Frag Mysticflor 266809 Firmenich", "g": "Fragancias", "u": "KG", "s": 3375.0, "v": 36479.61, "vu": 10.8088, "dias": 42.83, "movim": 34044.0, "m1": "A", "m2": "A"}, {"c": "517552.001", "d": "RM Myristamine Oxide w/EDTA", "g": "Surfactantes", "u": "KG", "s": 14641.326, "v": 29702.95, "vu": 2.0287, "dias": 37.77, "movim": 167448.893, "m1": "A", "m2": "A"}, {"c": "128036.001", "d": "RM Glutaraldehyde Liq 50%", "g": "Pesticida&Antimicrob", "u": "KG", "s": 9325.0, "v": 34045.5, "vu": 3.651, "dias": 43.65, "movim": 92283.457, "m1": "A", "m2": "A"}, {"c": "272424.001", "d": "RM Frag Mystical Wood mod 1 5564902", "g": "Fragancias", "u": "KG", "s": 680.0, "v": 8719.19, "vu": 12.8223, "dias": 12.48, "movim": 23534.2, "m1": "A", "m2": "A"}, {"c": "510422.001", "d": "RM Frag Pink Bijou 162227G Firmenich", "g": "Fragancias", "u": "KG", "s": 4684.5, "v": 50307.73, "vu": 10.7392, "dias": 69.57, "movim": 29089.55, "m1": "A", "m2": "A"}, {"c": "292773.001", "d": "RM Frag Baby Feel Mod2 5938103", "g": "Fragancias", "u": "KG", "s": 1476.0, "v": 24530.42, "vu": 16.6195, "dias": 34.47, "movim": 18497.5, "m1": "A", "m2": "A"}, {"c": "275214.001", "d": "RM Caustic Soda 31% w/w", "g": "Sal base", "u": "KG", "s": 106738.03, "v": 17180.61, "vu": 0.161, "dias": 30.05, "movim": 1534609.078, "m1": "A", "m2": "A"}, {"c": "131168.001", "d": "RM Coconut Fatty Acid", "g": "Surfactantes", "u": "KG", "s": 17307.299, "v": 64958.11, "vu": 3.7532, "dias": 121.07, "movim": 61758.0, "m1": "A", "m2": "A"}, {"c": "272425.001", "d": "RM Frag Bellezza 843 5671788", "g": "Fragancias", "u": "KG", "s": 697.6, "v": 9628.96, "vu": 13.803, "dias": 20.05, "movim": 15030.0, "m1": "B", "m2": "B"}, {"c": "292778.001", "d": "RM Frag Marilyn 321 Mod 1 5944059", "g": "Fragancias", "u": "KG", "s": 1582.0, "v": 21279.92, "vu": 13.4513, "dias": 51.54, "movim": 13259.0, "m1": "B", "m2": "B"}, {"c": "511996.001", "d": "RM Fragrance Zen 517 5916795", "g": "Fragancias", "u": "KG", "s": 799.658, "v": 12064.45, "vu": 15.087, "dias": 44.67, "movim": 7733.598, "m1": "B", "m2": "B"}, {"c": "288625.001", "d": "RM Quat Amm Comp 80%", "g": "Pesticida&Antimicrob", "u": "KG", "s": 3400.049, "v": 26668.99, "vu": 7.8437, "dias": 91.64, "movim": 16028.278, "m1": "B", "m2": "B"}, {"c": "519817.001", "d": "RM Frag CABO T17013300", "g": "Fragancias", "u": "KG", "s": 783.5, "v": 9588.66, "vu": 12.2382, "dias": 46.52, "movim": 7275.5, "m1": "B", "m2": "B"}, {"c": "130834.001", "d": "RM Diethylene Glycol Monobutyl Ether", "g": "Solventes", "u": "KG", "s": 9299.46, "v": 29600.02, "vu": 3.183, "dias": 128.15, "movim": 31348.562, "m1": "B", "m2": "B"}, {"c": "128161.001", "d": "RM Liquitint Pink", "g": "Colores & Pigmentos", "u": "KG", "s": 244.186, "v": 12490.47, "vu": 51.1515, "dias": 62.35, "movim": 1691.955, "m1": "B", "m2": "B"}, {"c": "163056.001", "d": "RM Frag Citrus Burts 359118", "g": "Fragancias", "u": "KG", "s": 258.82, "v": 9487.27, "vu": 36.6558, "dias": 50.94, "movim": 2194.882, "m1": "B", "m2": "B"}, {"c": "129790.001", "d": "RM Triethanolamine 85%", "g": "Solventes", "u": "KG", "s": 5224.24, "v": 16318.27, "vu": 3.1236, "dias": 85.95, "movim": 26258.0, "m1": "B", "m2": "B"}, {"c": "130804.001", "d": "RM Methylene phosphonic acid", "g": "Ácidos", "u": "KG", "s": 3707.6, "v": 10240.74, "vu": 2.7621, "dias": 64.35, "movim": 24889.42, "m1": "B", "m2": "B"}, {"c": "134345.001", "d": "RM Betaine/SXS Solution", "g": "Surfactantes", "u": "KG", "s": 5988.0, "v": 25495.87, "vu": 4.2578, "dias": 121.55, "movim": 21281.184, "m1": "B", "m2": "B"}, {"c": "131157.001", "d": "RM Distyryl Biphenyl Derivative FWA", "g": "Colores & Pigmentos", "u": "KG", "s": 1130.321, "v": 51264.45, "vu": 45.3539, "dias": 273.87, "movim": 1782.969, "m1": "B", "m2": "B"}, {"c": "511993.001", "d": "RM Fragrance Sea Fresh Rwrk T13011027", "g": "Fragancias", "u": "KG", "s": 200.672, "v": 6915.36, "vu": 34.461, "dias": 54.05, "movim": 1604.0, "m1": "B", "m2": "B"}, {"c": "137246.001", "d": "RM Frag 2474 AN MOD", "g": "Fragancias", "u": "KG", "s": 1019.94, "v": 17543.73, "vu": 17.2007, "dias": 109.2, "movim": 4034.96, "m1": "B", "m2": "B"}, {"c": "511994.001", "d": "RM Fragrance Rose Sky Rwrk T13011029", "g": "Fragancias", "u": "KG", "s": 0.513, "v": 10.3, "vu": 20.0871, "dias": 0.09, "movim": 2570.664, "m1": "B", "m2": "B"}, {"c": "130944.001", "d": "RM Monoethanolamine 99%", "g": "Solventes", "u": "KG", "s": 3858.8, "v": 13030.9, "vu": 3.3769, "dias": 102.33, "movim": 16291.0, "m1": "B", "m2": "B"}, {"c": "157453.001", "d": "RM Frag IFF 5747 AG", "g": "Fragancias", "u": "KG", "s": 112.88, "v": 3011.32, "vu": 26.6772, "dias": 32.16, "movim": 1516.24, "m1": "B", "m2": "B"}, {"c": "510431.001", "d": "RM Frag Floral 987  5903679", "g": "Fragancias", "u": "KG", "s": 1007.15, "v": 16905.09, "vu": 16.7851, "dias": 119.81, "movim": 3631.6, "m1": "B", "m2": "B"}, {"c": "131190.001", "d": "RM Sodium Metabisulfite", "g": "Sal base", "u": "KG", "s": 6000.0, "v": 4890.71, "vu": 0.8151, "dias": 54.0, "movim": 48000.0, "m1": "B", "m2": "B"}, {"c": "127877.001", "d": "RM Potassium Iodide", "g": "Sal base", "u": "KG", "s": 94.904, "v": 11766.98, "vu": 123.9882, "dias": 103.23, "movim": 397.171, "m1": "B", "m2": "B"}, {"c": "152231.001", "d": "RM Frag Romero PE 1704", "g": "Fragancias", "u": "KG", "s": 175.12, "v": 8908.45, "vu": 50.8705, "dias": 88.8, "movim": 851.92, "m1": "B", "m2": "C"}, {"c": "132083.001", "d": "RM Clrnt Liquitint Blue HP", "g": "Colores & Pigmentos", "u": "KG", "s": 142.584, "v": 10122.2, "vu": 70.9909, "dias": 92.09, "movim": 668.894, "m1": "B", "m2": "C"}, {"c": "127857.001", "d": "RM Sodium Chloride - Granules", "g": "Sal base", "u": "KG", "s": 42100.0, "v": 3697.26, "vu": 0.0878, "dias": 56.36, "movim": 322700.0, "m1": "C", "m2": "B"}, {"c": "174703.001", "d": "RM Frag Magnet 403486", "g": "Fragancias", "u": "KG", "s": 223.46, "v": 6177.32, "vu": 27.644, "dias": 80.7, "movim": 1196.18, "m1": "C", "m2": "C"}, {"c": "510432.001", "d": "RM Frag Fresh I", "g": "Fragancias", "u": "KG", "s": 301.576, "v": 5048.0, "vu": 16.7387, "dias": 72.59, "movim": 1794.76, "m1": "C", "m2": "C"}, {"c": "131092.001", "d": "RM Citric Acid", "g": "Ácidos", "u": "KG", "s": 3018.684, "v": 4424.46, "vu": 1.4657, "dias": 76.58, "movim": 17028.284, "m1": "C", "m2": "C"}, {"c": "132352.001", "d": "RM Clrnt Liquitint Brilliant Orange", "g": "Colores & Pigmentos", "u": "KG", "s": 4.416, "v": 286.53, "vu": 64.8918, "dias": 12.14, "movim": 157.062, "m1": "C", "m2": "C"}, {"c": "130793.001", "d": "RM Sulphate Magnesium Heptahydrate 98%", "g": "Sal base", "u": "KG", "s": 3214.16, "v": 1923.21, "vu": 0.5984, "dias": 41.93, "movim": 33114.314, "m1": "C", "m2": "C"}, {"c": "290304.001", "d": "RM Fragrance Eucalyptus II", "g": "Fragancias", "u": "KG", "s": 225.853, "v": 4540.98, "vu": 20.1059, "dias": 90.03, "movim": 1083.785, "m1": "C", "m2": "C"}, {"c": "500001.002", "d": "RM Fragance Evergreen LAP15922/00", "g": "Fragancias", "u": "KG", "s": 332.0, "v": 4445.12, "vu": 13.3889, "dias": 248.14, "movim": 578.0, "m1": "C", "m2": "B"}, {"c": "132242.001", "d": "RM Frag Citrus Blend 752 LPVIII", "g": "Fragancias", "u": "KG", "s": 900.0, "v": 11465.8, "vu": 12.7398, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}, {"c": "131096.001", "d": "RM Urea Technical", "g": "Sal base", "u": "KG", "s": 3848.0, "v": 4808.24, "vu": 1.2495, "dias": 94.9, "movim": 17516.0, "m1": "C", "m2": "C"}, {"c": "168987.001", "d": "RM Phosphoric Acid 85%", "g": "Ácidos", "u": "KG", "s": 525.0, "v": 1297.29, "vu": 2.471, "dias": 118.43, "movim": 1915.0, "m1": "C", "m2": "C"}, {"c": "500001.003", "d": "RM Fragance Golden Zest LAP15906/00", "g": "Fragancias", "u": "KG", "s": 434.49, "v": 4695.93, "vu": 10.8079, "dias": 802.14, "movim": 234.0, "m1": "C", "m2": "C"}, {"c": "293120.001", "d": "RM Frag Lavender I", "g": "Fragancias", "u": "KG", "s": 422.855, "v": 6378.15, "vu": 15.0835, "dias": 125.77, "movim": 1452.408, "m1": "C", "m2": "C"}, {"c": "517549.001", "d": "RM Lauryl Dimethylamine Oxide 30% w/EDTA", "g": "Surfactantes", "u": "KG", "s": 12000.0, "v": 23066.89, "vu": 1.9222, "dias": 376.88, "movim": 13755.196, "m1": "C", "m2": "C"}, {"c": "251849.001", "d": "RM Make up MC 292BK", "g": "Misceláneos", "u": "ML", "s": 139.969, "v": 7873.33, "vu": 56.2504, "dias": 158.07, "movim": 382.536, "m1": "C", "m2": "C"}, {"c": "134352.001", "d": "RM Sodium Chloride", "g": "Sal base", "u": "KG", "s": 6566.7, "v": 1059.86, "vu": 0.1614, "dias": 88.86, "movim": 31923.517, "m1": "C", "m2": "C"}, {"c": "130474.001", "d": "RM Polyacrylate Polymer", "g": "Polímeros", "u": "KG", "s": 1950.536, "v": 5099.08, "vu": 2.6142, "dias": 173.42, "movim": 4858.932, "m1": "C", "m2": "C"}, {"c": "132079.001", "d": "RM Clrnt Liquitint Patent Blue", "g": "Colores & Pigmentos", "u": "KG", "s": 25.082, "v": 728.1, "vu": 29.0284, "dias": 36.17, "movim": 299.554, "m1": "C", "m2": "C"}, {"c": "131044.001", "d": "RM Triclosan", "g": "Pesticida&Antimicrob", "u": "KG", "s": 146.775, "v": 4159.26, "vu": 28.3376, "dias": 86.2, "movim": 735.589, "m1": "C", "m2": "C"}, {"c": "134287.001", "d": "RM Frag PA 60947", "g": "Fragancias", "u": "KG", "s": 118.308, "v": 3686.45, "vu": 31.1598, "dias": 163.99, "movim": 311.652, "m1": "C", "m2": "C"}, {"c": "130692.001", "d": "RM Silicone Emulsion 30%", "g": "Siliconas", "u": "KG", "s": 400.322, "v": 5511.31, "vu": 13.7672, "dias": 151.75, "movim": 1139.645, "m1": "C", "m2": "C"}, {"c": "163147.001", "d": "RM coagulante", "g": "Misceláneos", "u": "KG", "s": 1700.0, "v": 2180.05, "vu": 1.2824, "dias": 99.78, "movim": 7360.0, "m1": "C", "m2": "C"}, {"c": "205701.001", "d": "RM Sodium silicate filtered", "g": "Sal base", "u": "KG", "s": 2106.705, "v": 3996.31, "vu": 1.8969, "dias": 152.52, "movim": 5967.247, "m1": "C", "m2": "C"}, {"c": "251865.001", "d": "RM Printing Ink IC 292BK", "g": "Misceláneos", "u": "ML", "s": 21.857, "v": 5774.4, "vu": 264.1906, "dias": 198.75, "movim": 47.508, "m1": "C", "m2": "C"}, {"c": "152695.002", "d": "RM Liquitint Lavender Dye", "g": "Colores & Pigmentos", "u": "KG", "s": 558.397, "v": 36578.39, "vu": 65.5061, "dias": 821.84, "movim": 293.521, "m1": "C", "m2": "C"}, {"c": "137128.001", "d": "RM Butylated Hydroxy Toluene", "g": "Solventes", "u": "KG", "s": 302.255, "v": 1405.52, "vu": 4.6501, "dias": 181.0, "movim": 721.385, "m1": "C", "m2": "C"}, {"c": "290588.002", "d": "RM Liquitint PG Red", "g": "Colores & Pigmentos", "u": "KG", "s": 7.232, "v": 230.04, "vu": 31.8092, "dias": 96.01, "movim": 32.54, "m1": "C", "m2": "C"}, {"c": "174359.001", "d": "RM Emulsion Breaker", "g": "Misceláneos", "u": "KG", "s": 2800.0, "v": 4122.35, "vu": 1.4723, "dias": 326.92, "movim": 3700.0, "m1": "C", "m2": "C"}, {"c": "174171.001", "d": "RM Filter Diatomea", "g": "Misceláneos", "u": "KG", "s": 3518.5, "v": 8181.0, "vu": 2.3251, "dias": 676.24, "movim": 2247.7, "m1": "C", "m2": "C"}, {"c": "174227.001", "d": "RM Processing Aids CFD-750 Floculante", "g": "Misceláneos", "u": "KG", "s": 2350.0, "v": 3007.1, "vu": 1.2796, "dias": 356.21, "movim": 2850.0, "m1": "C", "m2": "C"}, {"c": "133224.001", "d": "RM Dye Acid Blue 80", "g": "Colores & Pigmentos", "u": "KG", "s": 5.423, "v": 987.93, "vu": 182.176, "dias": 167.1, "movim": 14.02, "m1": "C", "m2": "C"}, {"c": "131039.001", "d": "RM Dye Acid Yellow 23", "g": "Colores & Pigmentos", "u": "KG", "s": 34.574, "v": 588.98, "vu": 17.0353, "dias": 133.34, "movim": 112.015, "m1": "C", "m2": "C"}, {"c": "137279.001", "d": "RM Dye Acid Red 249", "g": "Colores & Pigmentos", "u": "KG", "s": 14.117, "v": 2256.23, "vu": 159.8235, "dias": 307.27, "movim": 19.847, "m1": "C", "m2": "C"}, {"c": "202793.001", "d": "RM Sodium Metabisulfite 25 KG", "g": "Sal base", "u": "KG", "s": 950.0, "v": 426.29, "vu": 0.4487, "dias": 9999, "movim": 25.0, "m1": "C", "m2": "C"}, {"c": "129923.001", "d": "RM Fragr Holiday Pine 449170BB", "g": "Fragancias", "u": "KG", "s": 180.0, "v": 2847.59, "vu": 15.82, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}, {"c": "159829.001", "d": "RM Frag B-23152", "g": "Fragancias", "u": "KG", "s": 100.0, "v": 2286.06, "vu": 22.8606, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}, {"c": "173321.001", "d": "RM 2-Methyl-4-isothiazolin-3-ona", "g": "Pesticida&Antimicrob", "u": "KG", "s": 0.0, "v": 0.0, "vu": 0.0, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}];
-const CONSUMO_TOP5={"labels": ["2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], "series": [{"mat": "127877.001", "desc": "RM Potassium Iodide", "data": [31.223, 32.582, 27.153000000000002, 29.860999999999997, 20.362000000000002, 32.586000000000006, 25.793999999999997, 13.575, 16.159, 32.57899999999999, 29.866, 29.865000000000002, 36.654, 36.65299999999999]}, {"mat": "132083.001", "desc": "RM Clrnt Liquitint Blue HP", "data": [56.431000000000004, 66.6785, 56.74000000000001, 32.815, 43.808, 35.52399999999999, 35.135999999999996, 41.747499999999995, 42.802, 42.402, 46.747, 50.08600000000001, 61.56399999999999, 47.844]}, {"mat": "133224.001", "desc": "RM Dye Acid Blue 80", "data": [1.1955009999999997, 0.8867799999999999, 1.0281799999999999, 0.65246, 0.7655799999999999, 0.45854, 1.1574600000000002, 0.49288, 0.40602, 0.8181, 0.7777000000000001, 1.2208880000000002, 0.9796999999999999, 0.7534599999999999]}, {"mat": "137279.001", "desc": "RM Dye Acid Red 249", "data": [2.0330090000000003, 1.3695600000000003, 1.72912, 1.1594799999999998, 1.21604, 0.73124, 1.890719999999999, 0.71912, 0.707, 1.2402799999999998, 1.2402799999999998, 2.0523199999999995, 1.6119600000000003, 1.3453199999999996]}, {"mat": "251865.001", "desc": "RM Printing Ink IC 292BK", "data": [3.346089999999991, 4.150454000000004, 3.006865999999998, 2.5464330000000004, 3.173507999999973, 2.1348869999997997, 3.261766999999979, 2.8886139999999383, 2.442821999999885, 3.9812430000002506, 3.416346000000067, 4.01464200000026, 3.3367810000000553, 3.3107959999999923]}], "colors": ["#e24b4a", "#185fa5", "#ef9f27", "#639922", "#7c3aed"]};
+let AJUSTES_TOP10=[{"c": "275214.001", "d": "RM Caustic Soda 31% w/w", "um": "KG", "abs": 5794.31, "net": -5794.31}, {"c": "132668.001", "d": "RM Hydrogen Peroxide 60%", "um": "KG", "abs": 4257.7, "net": -3912.99}, {"c": "130793.001", "d": "RM Sulphate Magnesium Heptahydrate 98%", "um": "KG", "abs": 3075.36, "net": -54.96}, {"c": "517549.002", "d": "RM LaurylDimthylamineOxide30%w/EDTA BULK", "um": "KG", "abs": 1107.6, "net": 1107.6}, {"c": "128114.001", "d": "RM Linear Alkylbenzene Sulfonic Acid 95%", "um": "KG", "abs": 994.3, "net": -994.3}, {"c": "517549.001", "d": "RM Lauryl Dimethylamine Oxide 30% w/EDTA", "um": "KG", "abs": 877.6, "net": 877.6}, {"c": "130944.001", "d": "RM Monoethanolamine 99%", "um": "KG", "abs": 492.4, "net": -492.4}, {"c": "129790.001", "d": "RM Triethanolamine 85%", "um": "KG", "abs": 405.8, "net": -405.8}, {"c": "134345.001", "d": "RM Betaine/SXS Solution", "um": "KG", "abs": 326.55, "net": 326.55}, {"c": "272424.001", "d": "RM Frag Mystical Wood mod 1 5564902", "um": "KG", "abs": 310.0, "net": 310.0}];
 
 let all=[...BASE],filt=[...all],charts={};
 const dk=matchMedia('(prefers-color-scheme:dark)').matches;
@@ -450,6 +468,11 @@ function processFile(file){
           }
         }
         const ok=importRows(rows,file.name);
+        const snAj=wb.SheetNames.find(n=>n.toLowerCase().includes('ajuste'));
+        if(snAj){
+          const rawAj=XLSX.utils.sheet_to_json(wb.Sheets[snAj],{defval:''});
+          importAjustes(rawAj);
+        }
         if(ok)publishMateriales(file.name);
       }catch(err){setStatus('Error Excel: '+err.message,'','err');}
     };
@@ -492,6 +515,25 @@ function importRows(rows,name){
   }catch(err){setStatus('Error procesando: '+err.message,'','err');return false;}
 }
 
+// ── AJUSTES 701/702 — Top 10 dinámico desde la hoja "Ajustes (701-702)" ──
+// Espera las columnas T/U de esa hoja (Total 2026 (Neto) y Total 2026 (|Ajuste|)),
+// que ya vienen calculadas por fórmula en el Excel — acá solo se rankean.
+function importAjustes(rows){
+  try{
+    const parsed=rows.filter(r=>col(r,['Material','Codigo']).toString().trim()).map(r=>({
+      c:col(r,['Material','Codigo']).toString().trim(),
+      d:col(r,['Descripcion','Description','Texto breve']).toString().trim()||'—',
+      um:col(r,['UM','UMB','unidad']).toString().trim()||'KG',
+      net:parseFloat(col(r,['Total 2026 (Neto)','Total 2026 Neto','Ajuste Neto 2026']))||0,
+      abs:Math.abs(parseFloat(col(r,['Total 2026 (|Ajuste|)','Total 2026 (Ajuste)','Vol. |Ajuste| 2026','Total 2026 Abs']))||0),
+    })).filter(r=>r.c&&r.c!=='nan'&&r.c!=='undefined'&&r.abs>0);
+    if(!parsed.length) return false;
+    parsed.sort((a,b)=>b.abs-a.abs);
+    AJUSTES_TOP10=parsed.slice(0,10).map(r=>({c:r.c,d:r.d,um:r.um,abs:Math.round(r.abs*100)/100,net:Math.round(r.net*100)/100}));
+    return true;
+  }catch(err){ return false; }
+}
+
 function inferGroup(desc){
   const d=desc.toLowerCase();
   if(d.includes('frag')||d.includes('fragrance'))return 'Fragancias';
@@ -513,7 +555,7 @@ async function publishMateriales(filename){
     const res=await fetch('/api/upload-materiales',{
       method:'POST',
       headers:{'content-type':'application/json'},
-      body:JSON.stringify({materiales:all, meta:{filename}})
+      body:JSON.stringify({materiales:all, meta:{filename, fx:FX}, ajustes:AJUSTES_TOP10})
     });
     const json=await res.json();
     if(!res.ok||json.error) throw new Error(json.error||'Error al publicar.');
@@ -535,10 +577,18 @@ async function loadSharedMateriales(){
       if(json.meta && json.meta.updatedAt){
         document.getElementById('hFecha').textContent=new Date(json.meta.updatedAt).toLocaleDateString('es-AR',{month:'long',year:'numeric'});
       }
+      if(json.meta && json.meta.fx){
+        FX=parseFloat(json.meta.fx)||FX;
+        try{ localStorage.setItem('formulacion_fx', FX); }catch(e){}
+      }
+      if(json.ajustes && Array.isArray(json.ajustes) && json.ajustes.length>0){
+        AJUSTES_TOP10=json.ajustes;
+      }
     }
   }catch(e){
     // No hay Functions desplegadas o todavía nadie publicó nada — se usa el dataset de ejemplo (BASE)
   }
+  refreshFXUI();
   refreshGrupos();go();
 }
 
@@ -622,25 +672,28 @@ function render(){
   // ── Gráfico valor por clase ──
   mkCh('cValor',{type:'bar',data:{labels:['Clase A','Clase B','Clase C'],datasets:[{data:[vA,vB,vC],backgroundColor:['#e24b4a','#ef9f27','#639922'],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc,callback:v=>'$'+Math.round(v/1000)+'K'},grid:{color:gc}}}}});
 
-  // ── Gráfico consumo top5 ──
-  const labels=CONSUMO_TOP5.labels.map(l=>{const p=l.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+'-'+p[0].slice(2);});
-  document.getElementById('legConsumo').innerHTML=CONSUMO_TOP5.series.map((s,i)=>`<div class="li"><div class="lsq" style="background:${CONSUMO_TOP5.colors[i]}"></div>${s.desc}</div>`).join('');
-  mkCh('cConsumo',{
-    type:'line',
+  // ── Gráfico Top 10 ajustes (701/702) ──
+  document.getElementById('legAjustes').innerHTML=`<div class="li"><div class="lsq" style="background:#e24b4a"></div>Ajuste neto negativo (se contó menos stock del esperado)</div><div class="li"><div class="lsq" style="background:#639922"></div>Ajuste neto positivo (se contó más stock del esperado)</div>`;
+  mkCh('cAjustes',{
+    type:'bar',
     data:{
-      labels,
-      datasets:CONSUMO_TOP5.series.map((s,i)=>({
-        label:s.desc,
-        data:s.data,
-        borderColor:CONSUMO_TOP5.colors[i],
-        backgroundColor:CONSUMO_TOP5.colors[i]+'18',
-        fill:false,
-        tension:0.3,
-        pointRadius:3,
-        borderWidth:2
-      }))
+      labels:AJUSTES_TOP10.map(m=>m.c+' · '+m.d.substring(0,26)),
+      datasets:[{
+        data:AJUSTES_TOP10.map(m=>m.abs),
+        backgroundColor:AJUSTES_TOP10.map(m=>m.net<0?'#e24b4a':'#639922'),
+        borderRadius:3
+      }]
     },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,maxRotation:40,font:{size:10}},grid:{display:false}},y:{ticks:{color:tc,callback:v=>Math.round(v/1000)+'K',font:{size:10}},grid:{color:gc}}}}
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+        const m=AJUSTES_TOP10[ctx.dataIndex];
+        const sign=m.net>=0?'+':'';
+        return ['Ajuste neto: '+sign+m.net.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um,
+                'Volumen total ajustado: '+m.abs.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um];
+      }}}},
+      scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:9}},grid:{display:false}}}
+    }
   });
 
   // ── Gráfico cobertura ──
