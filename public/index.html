@@ -482,7 +482,7 @@ function importRows(rows,name){
       v:parseFloat(col(r,['Valor Stock (ARS)','Valor Stock','valor stock']))/FX||0,
       dias:parseFloat(col(r,['Días de Cobertura','Dias de Cobertura','Días de cobertura','Dias','Días']))||0,
       movim:parseFloat(col(r,['Movimiento Total','movimiento total','Movimiento']))||0,
-      m1:(col(r,['Clasif. ABC (Cobertura)','Clasif. ABC (cobertura)','ABC M1','m1']).toString().trim().toUpperCase()||'C').charAt(0),
+      m1:(col(r,['Clasif. ABC FIJA','Clasificacion ABC FIJA','Clasif. ABC (Cobertura)','Clasif. ABC (cobertura)','ABC M1','m1']).toString().trim().toUpperCase()||'C').charAt(0),
       m2:(col(r,['Clasif. ABC (Rotación)','Clasif. ABC (Rotacion)','Clasif. ABC (rotación)','ABC M2','m2']).toString().trim().toUpperCase()||'C').charAt(0),
     })).filter(r=>r.c&&r.c!=='nan'&&r.c!=='undefined');
     if(!parsed.length){setStatus('Sin datos válidos','Verificá que el Excel tenga la pestaña Valorización ABC con columnas Material, Stock, Valor','err');return false;}
