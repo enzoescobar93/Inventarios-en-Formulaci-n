@@ -40,6 +40,14 @@ export default async (req) => {
       await store.setJSON("ajustes-top10", body.ajustes);
     }
 
+    if (Array.isArray(body.ajustesUsd) && body.ajustesUsd.length > 0) {
+      await store.setJSON("ajustes-top10-usd", body.ajustesUsd);
+    }
+
+    if (Array.isArray(body.mi20) && body.mi20.length > 0) {
+      await store.setJSON("mi20-counts", body.mi20);
+    }
+
     return new Response(
       JSON.stringify({ ok: true, count: body.materiales.length }),
       { headers: { "content-type": "application/json" } }
