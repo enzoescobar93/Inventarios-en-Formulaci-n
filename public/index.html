@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tablero Inventarios ABC — Formulación</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -90,6 +91,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pill{display:inline-block;font-size:11px;font-weight:500;padding:2px 7px;border-radius:999px}
 .pr{background:var(--red-bg);color:var(--red-text)}
 .pa{background:var(--amber-bg);color:var(--amber-text)}
+.pc-si{background:var(--green-bg);color:var(--green-text);display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
+.pc-no{background:var(--red-bg);color:var(--red-text);display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
+.pc-pend{background:var(--amber-bg);color:var(--amber-text);display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
+.pc-na{background:var(--bg3);color:var(--text3);display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
 .sw{overflow-x:auto;border-radius:var(--rad-lg);border:0.5px solid var(--border)}
 table.dt{width:100%;border-collapse:collapse;font-size:12px}
 table.dt th{text-align:left;padding:6px 9px;font-size:11px;font-weight:500;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg)}
@@ -241,10 +246,22 @@ table.dt tbody tr:hover td{background:var(--bg2)}
     <div class="sw"><table class="dt" id="tTop5"><thead><tr><th>#</th><th>Código</th><th>Descripción</th><th style="text-align:right">Valor USD</th><th>% del filtro</th></tr></thead><tbody></tbody></table></div>
   </div>
   <div class="card">
-    <div class="card-title">Top 10 materiales más ajustados — SAP 701/702</div>
-    <div class="card-sub">Según el último Excel publicado · Mayor volumen de ajuste acumulado (positivo + negativo)</div>
+    <div class="card-title">Top 10 materiales más ajustados — por cantidad (KG)</div>
+    <div class="card-sub">Según el último Excel publicado · Volumen en KG · valor en USD sobre cada barra</div>
     <div class="leg" id="legAjustes" style="margin-bottom:12px"></div>
     <div style="position:relative;height:300px"><canvas id="cAjustes"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Top 10 materiales más ajustados — por valor (USD)</div>
+    <div class="card-sub">Ordenado por ajuste neto en dólares (valor absoluto) — puede traer materiales distintos al de arriba</div>
+    <div class="leg" id="legAjustesUSD" style="margin-bottom:12px"></div>
+    <div style="position:relative;height:300px"><canvas id="cAjustesUSD"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Variación mensual — Top 5 más ajustados</div>
+    <div class="card-sub" id="ajMensualSub">Ajuste neto por mes (KG) · no acumulado</div>
+    <div class="leg" id="legAjustesMensual" style="margin-bottom:12px"></div>
+    <div style="position:relative;height:260px"><canvas id="cAjustesMensual"></canvas></div>
   </div>
 </div>
 
@@ -312,34 +329,15 @@ table.dt tbody tr:hover td{background:var(--bg2)}
     <div class="kpi" style="border-top:3px solid var(--green)"><div class="kpi-label">Clase C — trimestral</div><div class="kpi-val" id="cntCC">—</div><div class="kpi-sub">4 conteos/año</div></div>
   </div>
 
-  <!-- CALENDARIO DE CHECKS -->
-  <div class="cal-wrap">
-    <div class="cal-title">Calendario de conteos — Jun 2026 → May 2027</div>
-    <div class="cal-sub">Tildá cada mes al completar el conteo — el estado se comparte para todos los que tengan el link</div>
-    <div style="overflow-x:auto">
-      <table class="cal-table" id="calTable">
-        <thead>
-          <tr>
-            <th class="cls-h">Clase</th>
-            <th>Jun-26</th><th>Jul-26</th><th>Ago-26</th><th>Sep-26</th><th>Oct-26</th><th>Nov-26</th><th>Dic-26</th><th>Ene-27</th><th>Feb-27</th><th>Mar-27</th><th>Abr-27</th><th>May-27</th>
-          </tr>
-        </thead>
-        <tbody id="calBody"></tbody>
-      </table>
-    </div>
-    <div class="cal-sync">
-      <div class="cal-sync-dot" id="calDot"></div>
-      <span id="calSyncMsg">Cargando estado...</span>
-    </div>
-  </div>
   <div class="card" style="margin-bottom:14px">
     <div class="card-title">Cumplimiento de conteos por código</div>
-    <div class="card-sub">Tildá cada código al contarlo. El % se calcula por clase, sobre los materiales que debían contarse ese mes según su frecuencia ABC, dentro del filtro activo arriba.</div>
+    <div class="card-sub">Automático desde la hoja MI20 del Excel — ya no hace falta tildar a mano. El % se calcula por clase, sobre los materiales que debían contarse ese mes según su frecuencia ABC, dentro del filtro activo arriba.</div>
     <div class="mat-toolbar">
-      <label>Mes a registrar</label>
+      <label>Mes a consultar</label>
       <select id="matMes" onchange="renderConteos()"></select>
     </div>
     <div class="igrid" id="matKpiGrid" style="margin-bottom:14px"></div>
+    <div id="matFaltantesWrap" style="margin-bottom:14px"></div>
     <div class="mat-resumen-wrap">
       <table class="mat-resumen-table">
         <thead>
@@ -360,7 +358,7 @@ table.dt tbody tr:hover td{background:var(--bg2)}
     <div class="card-title">Materiales filtrados con su frecuencia de conteo</div>
     <div class="sw" style="max-height:400px;overflow-y:auto">
       <table class="dt" id="tConteos">
-        <thead><tr><th>Conteo</th><th>Código</th><th>Descripción</th><th>Grupo</th><th>UM</th><th>M1</th><th>Conteos/año</th><th>Frecuencia</th><th>Acción recomendada</th></tr></thead>
+        <thead><tr><th>Alm. 2000</th><th>Alm. 2050</th><th>Código</th><th>Descripción</th><th>Grupo</th><th>UM</th><th>M1</th><th>Conteos/año</th><th>Frecuencia</th><th>Acción recomendada</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -427,7 +425,8 @@ function calKey(cls, mes) { return cls + '-' + mes; }
 function matKey(codigo, mes) { return codigo + '|' + mes; }
 
 const BASE=[{"c": "417713.001", "d": "RM Sodium Hypochloride 140 g/l", "g": "Pesticida&Antimicrob", "u": "KG", "s": 6374.739, "v": 703.75, "vu": 0.1104, "dias": 0.1, "movim": 26614061.544, "m1": "A", "m2": "A"}, {"c": "128114.001", "d": "RM Linear Alkylbenzene Sulfonic Acid 95%", "g": "Surfactantes", "u": "KG", "s": 53478.461, "v": 166014.68, "vu": 3.1043, "dias": 45.43, "movim": 508500.632, "m1": "A", "m2": "A"}, {"c": "243082.001", "d": "RM Ethoxylated Lauryl Alcohol 10 EO 90%", "g": "Surfactantes", "u": "KG", "s": 46463.319, "v": 135265.92, "vu": 2.9112, "dias": 47.31, "movim": 424310.932, "m1": "A", "m2": "A"}, {"c": "519551.001", "d": "RM Frag Panther RE 953 Mod 1 6216190", "g": "Fragancias", "u": "KG", "s": 3875.04, "v": 52593.96, "vu": 13.5725, "dias": 38.5, "movim": 43476.4, "m1": "A", "m2": "A"}, {"c": "132668.001", "d": "RM Hydrogen Peroxide 60%", "g": "Pesticida&Antimicrob", "u": "KG", "s": 15298.393, "v": 14165.34, "vu": 0.9259, "dias": 15.98, "movim": 413551.85, "m1": "A", "m2": "A"}, {"c": "519500.001", "d": "RM Frag 1200 HBA Super LPV MXB BBT MOD 5", "g": "Fragancias", "u": "KG", "s": 7694.36, "v": 85793.49, "vu": 11.1502, "dias": 84.03, "movim": 39554.72, "m1": "A", "m2": "A"}, {"c": "517549.002", "d": "RM LaurylDimthylamineOxide30%w/EDTA BULK", "g": "Surfactantes", "u": "KG", "s": 9137.658, "v": 19154.81, "vu": 2.0962, "dias": 23.09, "movim": 170953.305, "m1": "A", "m2": "A"}, {"c": "510357.001", "d": "RM Frag Mysticflor 266809 Firmenich", "g": "Fragancias", "u": "KG", "s": 3375.0, "v": 36479.61, "vu": 10.8088, "dias": 42.83, "movim": 34044.0, "m1": "A", "m2": "A"}, {"c": "517552.001", "d": "RM Myristamine Oxide w/EDTA", "g": "Surfactantes", "u": "KG", "s": 14641.326, "v": 29702.95, "vu": 2.0287, "dias": 37.77, "movim": 167448.893, "m1": "A", "m2": "A"}, {"c": "128036.001", "d": "RM Glutaraldehyde Liq 50%", "g": "Pesticida&Antimicrob", "u": "KG", "s": 9325.0, "v": 34045.5, "vu": 3.651, "dias": 43.65, "movim": 92283.457, "m1": "A", "m2": "A"}, {"c": "272424.001", "d": "RM Frag Mystical Wood mod 1 5564902", "g": "Fragancias", "u": "KG", "s": 680.0, "v": 8719.19, "vu": 12.8223, "dias": 12.48, "movim": 23534.2, "m1": "A", "m2": "A"}, {"c": "510422.001", "d": "RM Frag Pink Bijou 162227G Firmenich", "g": "Fragancias", "u": "KG", "s": 4684.5, "v": 50307.73, "vu": 10.7392, "dias": 69.57, "movim": 29089.55, "m1": "A", "m2": "A"}, {"c": "292773.001", "d": "RM Frag Baby Feel Mod2 5938103", "g": "Fragancias", "u": "KG", "s": 1476.0, "v": 24530.42, "vu": 16.6195, "dias": 34.47, "movim": 18497.5, "m1": "A", "m2": "A"}, {"c": "275214.001", "d": "RM Caustic Soda 31% w/w", "g": "Sal base", "u": "KG", "s": 106738.03, "v": 17180.61, "vu": 0.161, "dias": 30.05, "movim": 1534609.078, "m1": "A", "m2": "A"}, {"c": "131168.001", "d": "RM Coconut Fatty Acid", "g": "Surfactantes", "u": "KG", "s": 17307.299, "v": 64958.11, "vu": 3.7532, "dias": 121.07, "movim": 61758.0, "m1": "A", "m2": "A"}, {"c": "272425.001", "d": "RM Frag Bellezza 843 5671788", "g": "Fragancias", "u": "KG", "s": 697.6, "v": 9628.96, "vu": 13.803, "dias": 20.05, "movim": 15030.0, "m1": "B", "m2": "B"}, {"c": "292778.001", "d": "RM Frag Marilyn 321 Mod 1 5944059", "g": "Fragancias", "u": "KG", "s": 1582.0, "v": 21279.92, "vu": 13.4513, "dias": 51.54, "movim": 13259.0, "m1": "B", "m2": "B"}, {"c": "511996.001", "d": "RM Fragrance Zen 517 5916795", "g": "Fragancias", "u": "KG", "s": 799.658, "v": 12064.45, "vu": 15.087, "dias": 44.67, "movim": 7733.598, "m1": "B", "m2": "B"}, {"c": "288625.001", "d": "RM Quat Amm Comp 80%", "g": "Pesticida&Antimicrob", "u": "KG", "s": 3400.049, "v": 26668.99, "vu": 7.8437, "dias": 91.64, "movim": 16028.278, "m1": "B", "m2": "B"}, {"c": "519817.001", "d": "RM Frag CABO T17013300", "g": "Fragancias", "u": "KG", "s": 783.5, "v": 9588.66, "vu": 12.2382, "dias": 46.52, "movim": 7275.5, "m1": "B", "m2": "B"}, {"c": "130834.001", "d": "RM Diethylene Glycol Monobutyl Ether", "g": "Solventes", "u": "KG", "s": 9299.46, "v": 29600.02, "vu": 3.183, "dias": 128.15, "movim": 31348.562, "m1": "B", "m2": "B"}, {"c": "128161.001", "d": "RM Liquitint Pink", "g": "Colores & Pigmentos", "u": "KG", "s": 244.186, "v": 12490.47, "vu": 51.1515, "dias": 62.35, "movim": 1691.955, "m1": "B", "m2": "B"}, {"c": "163056.001", "d": "RM Frag Citrus Burts 359118", "g": "Fragancias", "u": "KG", "s": 258.82, "v": 9487.27, "vu": 36.6558, "dias": 50.94, "movim": 2194.882, "m1": "B", "m2": "B"}, {"c": "129790.001", "d": "RM Triethanolamine 85%", "g": "Solventes", "u": "KG", "s": 5224.24, "v": 16318.27, "vu": 3.1236, "dias": 85.95, "movim": 26258.0, "m1": "B", "m2": "B"}, {"c": "130804.001", "d": "RM Methylene phosphonic acid", "g": "Ácidos", "u": "KG", "s": 3707.6, "v": 10240.74, "vu": 2.7621, "dias": 64.35, "movim": 24889.42, "m1": "B", "m2": "B"}, {"c": "134345.001", "d": "RM Betaine/SXS Solution", "g": "Surfactantes", "u": "KG", "s": 5988.0, "v": 25495.87, "vu": 4.2578, "dias": 121.55, "movim": 21281.184, "m1": "B", "m2": "B"}, {"c": "131157.001", "d": "RM Distyryl Biphenyl Derivative FWA", "g": "Colores & Pigmentos", "u": "KG", "s": 1130.321, "v": 51264.45, "vu": 45.3539, "dias": 273.87, "movim": 1782.969, "m1": "B", "m2": "B"}, {"c": "511993.001", "d": "RM Fragrance Sea Fresh Rwrk T13011027", "g": "Fragancias", "u": "KG", "s": 200.672, "v": 6915.36, "vu": 34.461, "dias": 54.05, "movim": 1604.0, "m1": "B", "m2": "B"}, {"c": "137246.001", "d": "RM Frag 2474 AN MOD", "g": "Fragancias", "u": "KG", "s": 1019.94, "v": 17543.73, "vu": 17.2007, "dias": 109.2, "movim": 4034.96, "m1": "B", "m2": "B"}, {"c": "511994.001", "d": "RM Fragrance Rose Sky Rwrk T13011029", "g": "Fragancias", "u": "KG", "s": 0.513, "v": 10.3, "vu": 20.0871, "dias": 0.09, "movim": 2570.664, "m1": "B", "m2": "B"}, {"c": "130944.001", "d": "RM Monoethanolamine 99%", "g": "Solventes", "u": "KG", "s": 3858.8, "v": 13030.9, "vu": 3.3769, "dias": 102.33, "movim": 16291.0, "m1": "B", "m2": "B"}, {"c": "157453.001", "d": "RM Frag IFF 5747 AG", "g": "Fragancias", "u": "KG", "s": 112.88, "v": 3011.32, "vu": 26.6772, "dias": 32.16, "movim": 1516.24, "m1": "B", "m2": "B"}, {"c": "510431.001", "d": "RM Frag Floral 987  5903679", "g": "Fragancias", "u": "KG", "s": 1007.15, "v": 16905.09, "vu": 16.7851, "dias": 119.81, "movim": 3631.6, "m1": "B", "m2": "B"}, {"c": "131190.001", "d": "RM Sodium Metabisulfite", "g": "Sal base", "u": "KG", "s": 6000.0, "v": 4890.71, "vu": 0.8151, "dias": 54.0, "movim": 48000.0, "m1": "B", "m2": "B"}, {"c": "127877.001", "d": "RM Potassium Iodide", "g": "Sal base", "u": "KG", "s": 94.904, "v": 11766.98, "vu": 123.9882, "dias": 103.23, "movim": 397.171, "m1": "B", "m2": "B"}, {"c": "152231.001", "d": "RM Frag Romero PE 1704", "g": "Fragancias", "u": "KG", "s": 175.12, "v": 8908.45, "vu": 50.8705, "dias": 88.8, "movim": 851.92, "m1": "B", "m2": "C"}, {"c": "132083.001", "d": "RM Clrnt Liquitint Blue HP", "g": "Colores & Pigmentos", "u": "KG", "s": 142.584, "v": 10122.2, "vu": 70.9909, "dias": 92.09, "movim": 668.894, "m1": "B", "m2": "C"}, {"c": "127857.001", "d": "RM Sodium Chloride - Granules", "g": "Sal base", "u": "KG", "s": 42100.0, "v": 3697.26, "vu": 0.0878, "dias": 56.36, "movim": 322700.0, "m1": "C", "m2": "B"}, {"c": "174703.001", "d": "RM Frag Magnet 403486", "g": "Fragancias", "u": "KG", "s": 223.46, "v": 6177.32, "vu": 27.644, "dias": 80.7, "movim": 1196.18, "m1": "C", "m2": "C"}, {"c": "510432.001", "d": "RM Frag Fresh I", "g": "Fragancias", "u": "KG", "s": 301.576, "v": 5048.0, "vu": 16.7387, "dias": 72.59, "movim": 1794.76, "m1": "C", "m2": "C"}, {"c": "131092.001", "d": "RM Citric Acid", "g": "Ácidos", "u": "KG", "s": 3018.684, "v": 4424.46, "vu": 1.4657, "dias": 76.58, "movim": 17028.284, "m1": "C", "m2": "C"}, {"c": "132352.001", "d": "RM Clrnt Liquitint Brilliant Orange", "g": "Colores & Pigmentos", "u": "KG", "s": 4.416, "v": 286.53, "vu": 64.8918, "dias": 12.14, "movim": 157.062, "m1": "C", "m2": "C"}, {"c": "130793.001", "d": "RM Sulphate Magnesium Heptahydrate 98%", "g": "Sal base", "u": "KG", "s": 3214.16, "v": 1923.21, "vu": 0.5984, "dias": 41.93, "movim": 33114.314, "m1": "C", "m2": "C"}, {"c": "290304.001", "d": "RM Fragrance Eucalyptus II", "g": "Fragancias", "u": "KG", "s": 225.853, "v": 4540.98, "vu": 20.1059, "dias": 90.03, "movim": 1083.785, "m1": "C", "m2": "C"}, {"c": "500001.002", "d": "RM Fragance Evergreen LAP15922/00", "g": "Fragancias", "u": "KG", "s": 332.0, "v": 4445.12, "vu": 13.3889, "dias": 248.14, "movim": 578.0, "m1": "C", "m2": "B"}, {"c": "132242.001", "d": "RM Frag Citrus Blend 752 LPVIII", "g": "Fragancias", "u": "KG", "s": 900.0, "v": 11465.8, "vu": 12.7398, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}, {"c": "131096.001", "d": "RM Urea Technical", "g": "Sal base", "u": "KG", "s": 3848.0, "v": 4808.24, "vu": 1.2495, "dias": 94.9, "movim": 17516.0, "m1": "C", "m2": "C"}, {"c": "168987.001", "d": "RM Phosphoric Acid 85%", "g": "Ácidos", "u": "KG", "s": 525.0, "v": 1297.29, "vu": 2.471, "dias": 118.43, "movim": 1915.0, "m1": "C", "m2": "C"}, {"c": "500001.003", "d": "RM Fragance Golden Zest LAP15906/00", "g": "Fragancias", "u": "KG", "s": 434.49, "v": 4695.93, "vu": 10.8079, "dias": 802.14, "movim": 234.0, "m1": "C", "m2": "C"}, {"c": "293120.001", "d": "RM Frag Lavender I", "g": "Fragancias", "u": "KG", "s": 422.855, "v": 6378.15, "vu": 15.0835, "dias": 125.77, "movim": 1452.408, "m1": "C", "m2": "C"}, {"c": "517549.001", "d": "RM Lauryl Dimethylamine Oxide 30% w/EDTA", "g": "Surfactantes", "u": "KG", "s": 12000.0, "v": 23066.89, "vu": 1.9222, "dias": 376.88, "movim": 13755.196, "m1": "C", "m2": "C"}, {"c": "251849.001", "d": "RM Make up MC 292BK", "g": "Misceláneos", "u": "ML", "s": 139.969, "v": 7873.33, "vu": 56.2504, "dias": 158.07, "movim": 382.536, "m1": "C", "m2": "C"}, {"c": "134352.001", "d": "RM Sodium Chloride", "g": "Sal base", "u": "KG", "s": 6566.7, "v": 1059.86, "vu": 0.1614, "dias": 88.86, "movim": 31923.517, "m1": "C", "m2": "C"}, {"c": "130474.001", "d": "RM Polyacrylate Polymer", "g": "Polímeros", "u": "KG", "s": 1950.536, "v": 5099.08, "vu": 2.6142, "dias": 173.42, "movim": 4858.932, "m1": "C", "m2": "C"}, {"c": "132079.001", "d": "RM Clrnt Liquitint Patent Blue", "g": "Colores & Pigmentos", "u": "KG", "s": 25.082, "v": 728.1, "vu": 29.0284, "dias": 36.17, "movim": 299.554, "m1": "C", "m2": "C"}, {"c": "131044.001", "d": "RM Triclosan", "g": "Pesticida&Antimicrob", "u": "KG", "s": 146.775, "v": 4159.26, "vu": 28.3376, "dias": 86.2, "movim": 735.589, "m1": "C", "m2": "C"}, {"c": "134287.001", "d": "RM Frag PA 60947", "g": "Fragancias", "u": "KG", "s": 118.308, "v": 3686.45, "vu": 31.1598, "dias": 163.99, "movim": 311.652, "m1": "C", "m2": "C"}, {"c": "130692.001", "d": "RM Silicone Emulsion 30%", "g": "Siliconas", "u": "KG", "s": 400.322, "v": 5511.31, "vu": 13.7672, "dias": 151.75, "movim": 1139.645, "m1": "C", "m2": "C"}, {"c": "163147.001", "d": "RM coagulante", "g": "Misceláneos", "u": "KG", "s": 1700.0, "v": 2180.05, "vu": 1.2824, "dias": 99.78, "movim": 7360.0, "m1": "C", "m2": "C"}, {"c": "205701.001", "d": "RM Sodium silicate filtered", "g": "Sal base", "u": "KG", "s": 2106.705, "v": 3996.31, "vu": 1.8969, "dias": 152.52, "movim": 5967.247, "m1": "C", "m2": "C"}, {"c": "251865.001", "d": "RM Printing Ink IC 292BK", "g": "Misceláneos", "u": "ML", "s": 21.857, "v": 5774.4, "vu": 264.1906, "dias": 198.75, "movim": 47.508, "m1": "C", "m2": "C"}, {"c": "152695.002", "d": "RM Liquitint Lavender Dye", "g": "Colores & Pigmentos", "u": "KG", "s": 558.397, "v": 36578.39, "vu": 65.5061, "dias": 821.84, "movim": 293.521, "m1": "C", "m2": "C"}, {"c": "137128.001", "d": "RM Butylated Hydroxy Toluene", "g": "Solventes", "u": "KG", "s": 302.255, "v": 1405.52, "vu": 4.6501, "dias": 181.0, "movim": 721.385, "m1": "C", "m2": "C"}, {"c": "290588.002", "d": "RM Liquitint PG Red", "g": "Colores & Pigmentos", "u": "KG", "s": 7.232, "v": 230.04, "vu": 31.8092, "dias": 96.01, "movim": 32.54, "m1": "C", "m2": "C"}, {"c": "174359.001", "d": "RM Emulsion Breaker", "g": "Misceláneos", "u": "KG", "s": 2800.0, "v": 4122.35, "vu": 1.4723, "dias": 326.92, "movim": 3700.0, "m1": "C", "m2": "C"}, {"c": "174171.001", "d": "RM Filter Diatomea", "g": "Misceláneos", "u": "KG", "s": 3518.5, "v": 8181.0, "vu": 2.3251, "dias": 676.24, "movim": 2247.7, "m1": "C", "m2": "C"}, {"c": "174227.001", "d": "RM Processing Aids CFD-750 Floculante", "g": "Misceláneos", "u": "KG", "s": 2350.0, "v": 3007.1, "vu": 1.2796, "dias": 356.21, "movim": 2850.0, "m1": "C", "m2": "C"}, {"c": "133224.001", "d": "RM Dye Acid Blue 80", "g": "Colores & Pigmentos", "u": "KG", "s": 5.423, "v": 987.93, "vu": 182.176, "dias": 167.1, "movim": 14.02, "m1": "C", "m2": "C"}, {"c": "131039.001", "d": "RM Dye Acid Yellow 23", "g": "Colores & Pigmentos", "u": "KG", "s": 34.574, "v": 588.98, "vu": 17.0353, "dias": 133.34, "movim": 112.015, "m1": "C", "m2": "C"}, {"c": "137279.001", "d": "RM Dye Acid Red 249", "g": "Colores & Pigmentos", "u": "KG", "s": 14.117, "v": 2256.23, "vu": 159.8235, "dias": 307.27, "movim": 19.847, "m1": "C", "m2": "C"}, {"c": "202793.001", "d": "RM Sodium Metabisulfite 25 KG", "g": "Sal base", "u": "KG", "s": 950.0, "v": 426.29, "vu": 0.4487, "dias": 9999, "movim": 25.0, "m1": "C", "m2": "C"}, {"c": "129923.001", "d": "RM Fragr Holiday Pine 449170BB", "g": "Fragancias", "u": "KG", "s": 180.0, "v": 2847.59, "vu": 15.82, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}, {"c": "159829.001", "d": "RM Frag B-23152", "g": "Fragancias", "u": "KG", "s": 100.0, "v": 2286.06, "vu": 22.8606, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}, {"c": "173321.001", "d": "RM 2-Methyl-4-isothiazolin-3-ona", "g": "Pesticida&Antimicrob", "u": "KG", "s": 0.0, "v": 0.0, "vu": 0.0, "dias": 9999.0, "movim": 0.0, "m1": "C", "m2": "C"}];
-let AJUSTES_TOP10=[{"c": "275214.001", "d": "RM Caustic Soda 31% w/w", "um": "KG", "abs": 5794.31, "net": -5794.31}, {"c": "132668.001", "d": "RM Hydrogen Peroxide 60%", "um": "KG", "abs": 4257.7, "net": -3912.99}, {"c": "130793.001", "d": "RM Sulphate Magnesium Heptahydrate 98%", "um": "KG", "abs": 3075.36, "net": -54.96}, {"c": "517549.002", "d": "RM LaurylDimthylamineOxide30%w/EDTA BULK", "um": "KG", "abs": 1107.6, "net": 1107.6}, {"c": "128114.001", "d": "RM Linear Alkylbenzene Sulfonic Acid 95%", "um": "KG", "abs": 994.3, "net": -994.3}, {"c": "517549.001", "d": "RM Lauryl Dimethylamine Oxide 30% w/EDTA", "um": "KG", "abs": 877.6, "net": 877.6}, {"c": "130944.001", "d": "RM Monoethanolamine 99%", "um": "KG", "abs": 492.4, "net": -492.4}, {"c": "129790.001", "d": "RM Triethanolamine 85%", "um": "KG", "abs": 405.8, "net": -405.8}, {"c": "134345.001", "d": "RM Betaine/SXS Solution", "um": "KG", "abs": 326.55, "net": 326.55}, {"c": "272424.001", "d": "RM Frag Mystical Wood mod 1 5564902", "um": "KG", "abs": 310.0, "net": 310.0}];
+let AJUSTES_MESES=["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"];
+let AJUSTES_TOP10=[{"c": "417713.001", "d": "RM Sodium Hypochloride 140 g/l", "um": "KG", "abs": 330524.64, "net": 330524.64, "usdAbs": 33985.17, "usdNet": 33985.17, "monthly": [0, 0, 0, 0, 0, 154049.97, 176474.67]}, {"c": "275214.001", "d": "RM Caustic Soda 31% w/w", "um": "KG", "abs": 52580.0, "net": -52580.0, "usdAbs": 8219.96, "usdNet": -8219.96, "monthly": [0, 0, 0, 0, -5794.31, 0, -46785.69]}, {"c": "517552.001", "d": "RM Myristamine Oxide w/EDTA", "um": "KG", "abs": 5870.03, "net": 5870.03, "usdAbs": 12272.28, "usdNet": 12272.28, "monthly": [0, 0, 0, 176.46, 0, 5693.56, 0]}, {"c": "132668.001", "d": "RM Hydrogen Peroxide 60%", "um": "KG", "abs": 5295.94, "net": -4951.23, "usdAbs": 4502.51, "usdNet": -4209.44, "monthly": [0, -2379.64, 0, -1705.7, 172.36, 0, -1038.25]}, {"c": "243082.001", "d": "RM Ethoxylated Lauryl Alcohol 10 EO 90%", "um": "KG", "abs": 4488.59, "net": -4488.59, "usdAbs": 12823.19, "usdNet": -12823.19, "monthly": [0, 0, 0, 0, 0, -4488.59, 0]}, {"c": "128114.001", "d": "RM Linear Alkylbenzene Sulfonic Acid 95%", "um": "KG", "abs": 3722.37, "net": -995.13, "usdAbs": 10781.88, "usdNet": -2882.4, "monthly": [0, -994.3, 0, 0, 0, -1364.45, 1363.62]}, {"c": "130793.001", "d": "RM Sulphate Magnesium Heptahydrate 98%", "um": "KG", "abs": 3075.36, "net": -54.96, "usdAbs": 1791.55, "usdNet": -32.02, "monthly": [1510.2, -1565.16, 0, 0, 0, 0, 0]}, {"c": "517549.002", "d": "RM LaurylDimthylamineOxide30%w/EDTA BULK", "um": "KG", "abs": 2821.2, "net": 2821.2, "usdAbs": 5838.06, "usdNet": 5838.06, "monthly": [0, 0, 0, 853.36, 254.24, 266.73, 1446.88]}, {"c": "131168.001", "d": "RM Coconut Fatty Acid", "um": "KG", "abs": 1493.5, "net": 725.5, "usdAbs": 5271.36, "usdNet": 2560.68, "monthly": [0, 155.5, 0, 0, 0, 954.0, -384]}, {"c": "519500.001", "d": "RM Frag 1200 HBA Super LPV MXB BBT MOD 5", "um": "KG", "abs": 1307.62, "net": 109.02, "usdAbs": 13711.23, "usdNet": 1143.14, "monthly": [105.5, 103.9, 57.74, 0, 0, -599.3, 441.18]}];
 
 let all=[...BASE],filt=[...all],charts={};
 const dk=matchMedia('(prefers-color-scheme:dark)').matches;
@@ -482,6 +481,11 @@ function processFile(file){
           const rawAj=XLSX.utils.sheet_to_json(wb.Sheets[snAj],{defval:''});
           importAjustes(rawAj);
         }
+        const snMI20=wb.SheetNames.find(n=>n.toLowerCase().includes('mi20'));
+        if(snMI20){
+          const rawMI20=XLSX.utils.sheet_to_json(wb.Sheets[snMI20],{defval:''});
+          importMI20(rawMI20);
+        }
         if(ok)publishMateriales(file.name);
       }catch(err){setStatus('Error Excel: '+err.message,'','err');}
     };
@@ -512,6 +516,7 @@ function importRows(rows,name){
       u:col(r,['UMB','UM','unidad']).toString().trim()||'KG',
       s:parseFloat(col(r,['Stock (Unidades)','Stock','stock unid']))||0,
       v:parseFloat(col(r,['Valor Stock (ARS)','Valor Stock','valor stock']))/FX||0,
+      vu:parseFloat(col(r,['Costo Unitario (ARS)','Costo Unitario','costo unitario']))/FX||0,
       dias:parseFloat(col(r,['Días de Cobertura','Dias de Cobertura','Días de cobertura','Dias','Días']))||0,
       movim:parseFloat(col(r,['Movimiento Total','movimiento total','Movimiento']))||0,
       m1:(col(r,['Clasif. ABC FIJA','Clasificacion ABC FIJA','Clasif. ABC (Cobertura)','Clasif. ABC (cobertura)','ABC M1','m1']).toString().trim().toUpperCase()||'C').charAt(0),
@@ -525,20 +530,48 @@ function importRows(rows,name){
 }
 
 // ── AJUSTES 701/702 — Top 10 dinámico desde la hoja "Ajustes (701-702)" ──
-// Espera las columnas T/U de esa hoja (Total 2026 (Neto) y Total 2026 (|Ajuste|)),
-// que ya vienen calculadas por fórmula en el Excel — acá solo se rankean.
+// Espera las columnas Z/AA de esa hoja (Total 2026 (Neto) y Total 2026 (|Ajuste|)),
+// que ya vienen calculadas por fórmula en el Excel — acá se rankean, se convierten
+// a USD usando el costo unitario ya cargado en 'all', y además se guarda el detalle
+// mes a mes (detectando solas las columnas "2026-01","2026-02",... que existan).
+let AJUSTES_TOP10_USD=[{"c": "417713.001", "d": "RM Sodium Hypochloride 140 g/l", "um": "KG", "abs": 330524.64, "net": 330524.64, "usdAbs": 33985.17, "usdNet": 33985.17, "monthly": [0, 0, 0, 0, 0, 154049.97, 176474.67]}, {"c": "243082.001", "d": "RM Ethoxylated Lauryl Alcohol 10 EO 90%", "um": "KG", "abs": 4488.59, "net": -4488.59, "usdAbs": 12823.19, "usdNet": -12823.19, "monthly": [0, 0, 0, 0, 0, -4488.59, 0]}, {"c": "517552.001", "d": "RM Myristamine Oxide w/EDTA", "um": "KG", "abs": 5870.03, "net": 5870.03, "usdAbs": 12272.28, "usdNet": 12272.28, "monthly": [0, 0, 0, 176.46, 0, 5693.56, 0]}, {"c": "275214.001", "d": "RM Caustic Soda 31% w/w", "um": "KG", "abs": 52580.0, "net": -52580.0, "usdAbs": 8219.96, "usdNet": -8219.96, "monthly": [0, 0, 0, 0, -5794.31, 0, -46785.69]}, {"c": "517549.002", "d": "RM LaurylDimthylamineOxide30%w/EDTA BULK", "um": "KG", "abs": 2821.2, "net": 2821.2, "usdAbs": 5838.06, "usdNet": 5838.06, "monthly": [0, 0, 0, 853.36, 254.24, 266.73, 1446.88]}, {"c": "132668.001", "d": "RM Hydrogen Peroxide 60%", "um": "KG", "abs": 5295.94, "net": -4951.23, "usdAbs": 4502.51, "usdNet": -4209.44, "monthly": [0, -2379.64, 0, -1705.7, 172.36, 0, -1038.25]}, {"c": "128114.001", "d": "RM Linear Alkylbenzene Sulfonic Acid 95%", "um": "KG", "abs": 3722.37, "net": -995.13, "usdAbs": 10781.88, "usdNet": -2882.4, "monthly": [0, -994.3, 0, 0, 0, -1364.45, 1363.62]}, {"c": "131168.001", "d": "RM Coconut Fatty Acid", "um": "KG", "abs": 1493.5, "net": 725.5, "usdAbs": 5271.36, "usdNet": 2560.68, "monthly": [0, 155.5, 0, 0, 0, 954.0, -384]}, {"c": "519500.001", "d": "RM Frag 1200 HBA Super LPV MXB BBT MOD 5", "um": "KG", "abs": 1307.62, "net": 109.02, "usdAbs": 13711.23, "usdNet": 1143.14, "monthly": [105.5, 103.9, 57.74, 0, 0, -599.3, 441.18]}, {"c": "130793.001", "d": "RM Sulphate Magnesium Heptahydrate 98%", "um": "KG", "abs": 3075.36, "net": -54.96, "usdAbs": 1791.55, "usdNet": -32.02, "monthly": [1510.2, -1565.16, 0, 0, 0, 0, 0]}];
 function importAjustes(rows){
   try{
-    const parsed=rows.filter(r=>col(r,['Material','Codigo']).toString().trim()).map(r=>({
-      c:col(r,['Material','Codigo']).toString().trim(),
-      d:col(r,['Descripcion','Description','Texto breve']).toString().trim()||'—',
-      um:col(r,['UM','UMB','unidad']).toString().trim()||'KG',
-      net:parseFloat(col(r,['Total 2026 (Neto)','Total 2026 Neto','Ajuste Neto 2026']))||0,
-      abs:Math.abs(parseFloat(col(r,['Total 2026 (|Ajuste|)','Total 2026 (Ajuste)','Vol. |Ajuste| 2026','Total 2026 Abs']))||0),
-    })).filter(r=>r.c&&r.c!=='nan'&&r.c!=='undefined'&&r.abs>0);
+    if(!rows.length) return false;
+    const vuMap={}; all.forEach(m=>{vuMap[m.c]=m.vu||0;});
+
+    // Detectar columnas de mes 2026 presentes en el archivo, en orden cronológico
+    const mesKeys=Object.keys(rows[0]).filter(k=>/^2026-\d{2}$/.test(k.toString().trim())).sort();
+
+    const parsed=rows.filter(r=>col(r,['Material','Codigo']).toString().trim()).map(r=>{
+      const vu=vuMap[col(r,['Material','Codigo']).toString().trim()]||0;
+      const net=parseFloat(col(r,['Total 2026 (Neto)','Total 2026 Neto','Ajuste Neto 2026']))||0;
+      const abs_=Math.abs(parseFloat(col(r,['Total 2026 (|Ajuste|)','Total 2026 (Ajuste)','Vol. |Ajuste| 2026','Total 2026 Abs']))||0);
+      return {
+        c:col(r,['Material','Codigo']).toString().trim(),
+        d:col(r,['Descripcion','Description','Texto breve']).toString().trim()||'—',
+        um:col(r,['UM','UMB','unidad']).toString().trim()||'KG',
+        net, abs:abs_,
+        usdNet:net*vu, usdAbs:abs_*vu,
+        mensual:mesKeys.map(mk=>parseFloat(r[mk])||0),
+      };
+    }).filter(r=>r.c&&r.c!=='nan'&&r.c!=='undefined'&&r.abs>0);
     if(!parsed.length) return false;
-    parsed.sort((a,b)=>b.abs-a.abs);
-    AJUSTES_TOP10=parsed.slice(0,10).map(r=>({c:r.c,d:r.d,um:r.um,abs:Math.round(r.abs*100)/100,net:Math.round(r.net*100)/100}));
+
+    const toEntry=r=>({
+      c:r.c,d:r.d,um:r.um,
+      abs:Math.round(r.abs*100)/100,
+      net:Math.round(r.net*100)/100,
+      usdAbs:Math.round(r.usdAbs*100)/100,
+      usdNet:Math.round(r.usdNet*100)/100,
+      monthly:r.mensual.map(v=>Math.round(v*100)/100),
+    });
+
+    // Dos rankings independientes sobre el mismo universo — pueden traer materiales distintos
+    AJUSTES_TOP10=[...parsed].sort((a,b)=>b.abs-a.abs).slice(0,10).map(toEntry);
+    AJUSTES_TOP10_USD=[...parsed].sort((a,b)=>Math.abs(b.usdNet)-Math.abs(a.usdNet)).slice(0,10).map(toEntry);
+
+    if(mesKeys.length) AJUSTES_MESES=mesKeys;
     return true;
   }catch(err){ return false; }
 }
@@ -564,7 +597,7 @@ async function publishMateriales(filename){
     const res=await fetch('/api/upload-materiales',{
       method:'POST',
       headers:{'content-type':'application/json'},
-      body:JSON.stringify({materiales:all, meta:{filename, fx:FX}, ajustes:AJUSTES_TOP10})
+      body:JSON.stringify({materiales:all, meta:{filename, fx:FX}, ajustes:AJUSTES_TOP10, ajustesUsd:AJUSTES_TOP10_USD, mi20:MI20_COUNTS.map(r=>({mat:r.mat, alm:r.alm, fecha:r.fecha.toISOString()}))})
     });
     const json=await res.json();
     if(!res.ok||json.error) throw new Error(json.error||'Error al publicar.');
@@ -592,6 +625,12 @@ async function loadSharedMateriales(){
       }
       if(json.ajustes && Array.isArray(json.ajustes) && json.ajustes.length>0){
         AJUSTES_TOP10=json.ajustes;
+      }
+      if(json.ajustesUsd && Array.isArray(json.ajustesUsd) && json.ajustesUsd.length>0){
+        AJUSTES_TOP10_USD=json.ajustesUsd;
+      }
+      if(json.mi20 && Array.isArray(json.mi20) && json.mi20.length>0){
+        MI20_COUNTS=json.mi20.map(r=>({mat:r.mat, alm:r.alm, fecha:new Date(r.fecha)}));
       }
     }
   }catch(e){
@@ -634,7 +673,7 @@ function reset(){
 
 // ── HELPERS ──────────────────────────────────────────────
 const fn=n=>Math.round(n).toLocaleString('es-AR');
-const usd=n=>'$'+n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
+const usd=n=>'US$'+n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0});
 function dF(d,colored){
   if(d===0)return '<span style="color:#a32d2d;font-size:11px">Sin stock</span>';
   if(d>=9999)return '<span style="color:#854f0b;font-size:11px">Sin movim.</span>';
@@ -642,6 +681,53 @@ function dF(d,colored){
   return `<span style="${c}">${d.toFixed(1)}</span>`;
 }
 const bM=m=>`<span class="badge b${m.toLowerCase()}">${m}</span>`;
+
+// ── MI20 — conteos físicos SAP, para automatizar el Plan de Conteos ──
+let MI20_COUNTS=[
+  {mat:'417713.001', alm:'2050', fecha:new Date(2026,5,3)},
+  {mat:'128114.001', alm:'2050', fecha:new Date(2026,5,10)},
+  {mat:'243082.001', alm:'2000', fecha:new Date(2026,5,15)},
+  {mat:'132668.001', alm:'2050', fecha:new Date(2026,5,20)},
+]; // [{mat, alm, fecha:Date}, ...] — reemplazado apenas se publique un Excel real con hoja MI20
+const MESES_ABBR=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function excelSerialToDate(v){
+  if(v instanceof Date) return v;
+  const n=parseFloat(v);
+  if(isNaN(n)) return null;
+  return new Date(Math.round((n-25569)*86400000));
+}
+function mesLabelToRange(label){
+  const [abbr,yy]=String(label).split('-');
+  const mIdx=MESES_ABBR.indexOf(abbr);
+  if(mIdx<0) return null;
+  const year=2000+parseInt(yy,10);
+  const start=new Date(year,mIdx,1);
+  const end=mIdx===11?new Date(year+1,0,1):new Date(year,mIdx+1,1);
+  return {start,end};
+}
+function contadoEnMes(matCode,mesLabel,almacen){
+  const rng=mesLabelToRange(mesLabel);
+  if(!rng) return false;
+  return MI20_COUNTS.some(r=>r.mat===matCode&&r.fecha>=rng.start&&r.fecha<rng.end&&(!almacen||r.alm===almacen));
+}
+function estadoConteoMI20(matCode,mesLabel,almacen){
+  if(contadoEnMes(matCode,mesLabel,almacen)) return 'SI';
+  const rng=mesLabelToRange(mesLabel);
+  if(rng && new Date()>=rng.end) return 'NO';
+  return 'Pendiente';
+}
+function importMI20(rows){
+  try{
+    const parsed=rows.filter(r=>col(r,['Material','Codigo']).toString().trim()).map(r=>({
+      mat:col(r,['Material','Codigo']).toString().trim(),
+      alm:col(r,['Almacén','Almacen','Warehouse']).toString().trim(),
+      fecha:excelSerialToDate(col(r,['Fecha contabiliz.','Fecha contabilizacion','Fecha'])),
+    })).filter(r=>r.mat&&r.fecha);
+    if(!parsed.length) return false;
+    MI20_COUNTS=parsed;
+    return true;
+  }catch(err){ return false; }
+}
 function accInput(tabla,mat,defaultText){
   const saved=accState[accKey(tabla,mat)];
   const val=(saved!==undefined&&saved!==null)?saved:defaultText;
@@ -689,12 +775,13 @@ function render(){
   mkCh('cDonut',{type:'doughnut',data:{labels:['A','B','C'],datasets:[{data:[cA,cB,cC],backgroundColor:['#e24b4a','#ef9f27','#639922'],borderWidth:3,borderColor:dk?'#1c1c1a':'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}});
 
   // ── Gráfico valor por clase ──
-  mkCh('cValor',{type:'bar',data:{labels:['Clase A','Clase B','Clase C'],datasets:[{data:[vA,vB,vC],backgroundColor:['#e24b4a','#ef9f27','#639922'],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc,callback:v=>'$'+Math.round(v/1000)+'K'},grid:{color:gc}}}}});
+  mkCh('cValor',{type:'bar',data:{labels:['Clase A','Clase B','Clase C'],datasets:[{data:[vA,vB,vC],backgroundColor:['#e24b4a','#ef9f27','#639922'],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc},grid:{color:gc}},y:{ticks:{color:tc,callback:v=>'US$'+Math.round(v/1000)+'K'},grid:{color:gc}}}}});
 
-  // ── Gráfico Top 10 ajustes (701/702) ──
+  // ── Gráfico Top 10 ajustes (701/702) — con valor USD visible sobre cada barra ──
   document.getElementById('legAjustes').innerHTML=`<div class="li"><div class="lsq" style="background:#e24b4a"></div>Ajuste neto negativo (se contó menos stock del esperado)</div><div class="li"><div class="lsq" style="background:#639922"></div>Ajuste neto positivo (se contó más stock del esperado)</div>`;
   mkCh('cAjustes',{
     type:'bar',
+    plugins:[ChartDataLabels],
     data:{
       labels:AJUSTES_TOP10.map(m=>m.c+' · '+m.d.substring(0,26)),
       datasets:[{
@@ -705,13 +792,109 @@ function render(){
     },
     options:{
       indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
-        const m=AJUSTES_TOP10[ctx.dataIndex];
-        const sign=m.net>=0?'+':'';
-        return ['Ajuste neto: '+sign+m.net.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um,
-                'Volumen total ajustado: '+m.abs.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um];
-      }}}},
+      layout:{padding:{right:95}},
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          anchor:'end',align:'end',offset:4,
+          color:dk?'#f0efea':'#1a1a18',font:{size:10,weight:'600'},
+          textAlign:'start',
+          formatter:(value,ctx)=>{
+            const m=AJUSTES_TOP10[ctx.dataIndex];
+            const signUsd=(m.usdNet||0)>=0?'+':'-';
+            const signKg=(m.net||0)>=0?'+':'-';
+            const linea1=signUsd+usd(Math.round(Math.abs(m.usdNet||0)));
+            const linea2=signKg+Math.round(Math.abs(m.net||0)).toLocaleString('es-AR')+' '+m.um;
+            return [linea1, linea2];
+          }
+        },
+        tooltip:{callbacks:{label:ctx=>{
+          const m=AJUSTES_TOP10[ctx.dataIndex];
+          const sign=m.net>=0?'+':'';
+          const signUsd=(m.usdNet||0)>=0?'+':'';
+          return ['Ajuste neto: '+sign+m.net.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um+' ('+signUsd+usd(Math.round(m.usdNet||0))+')',
+                  'Volumen total ajustado: '+m.abs.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um+' ('+usd(Math.round(m.usdAbs||0))+')'];
+        }}}
+      },
       scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:9}},grid:{display:false}}}
+    }
+  });
+
+  // ── Gráfico Top 10 ajustes por VALOR (USD) — ranking independiente ──
+  document.getElementById('legAjustesUSD').innerHTML=`<div class="li"><div class="lsq" style="background:#e24b4a"></div>Ajuste neto negativo (se contó menos stock del esperado)</div><div class="li"><div class="lsq" style="background:#639922"></div>Ajuste neto positivo (se contó más stock del esperado)</div>`;
+  mkCh('cAjustesUSD',{
+    type:'bar',
+    plugins:[ChartDataLabels],
+    data:{
+      labels:AJUSTES_TOP10_USD.map(m=>m.c+' · '+m.d.substring(0,26)),
+      datasets:[{
+        data:AJUSTES_TOP10_USD.map(m=>Math.abs(m.usdNet)),
+        backgroundColor:AJUSTES_TOP10_USD.map(m=>m.usdNet<0?'#e24b4a':'#639922'),
+        borderRadius:3
+      }]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      layout:{padding:{right:95}},
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          anchor:'end',align:'end',offset:4,
+          color:dk?'#f0efea':'#1a1a18',font:{size:10,weight:'600'},
+          textAlign:'start',
+          formatter:(value,ctx)=>{
+            const m=AJUSTES_TOP10_USD[ctx.dataIndex];
+            const signUsd=(m.usdNet||0)>=0?'+':'-';
+            const signKg=(m.net||0)>=0?'+':'-';
+            const linea1=signUsd+usd(Math.round(Math.abs(m.usdNet||0)));
+            const linea2=signKg+Math.round(Math.abs(m.net||0)).toLocaleString('es-AR')+' '+m.um;
+            return [linea1, linea2];
+          }
+        },
+        tooltip:{callbacks:{label:ctx=>{
+          const m=AJUSTES_TOP10_USD[ctx.dataIndex];
+          const sign=m.net>=0?'+':'';
+          const signUsd=(m.usdNet||0)>=0?'+':'';
+          return 'Ajuste neto 2026: '+signUsd+usd(Math.round(m.usdNet||0))+' ('+sign+m.net.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um+')';
+        }}}
+      },
+      scales:{x:{ticks:{color:tc,font:{size:10},callback:v=>'US$'+(v/1000)+'K'},grid:{color:gc}},y:{ticks:{color:tc,font:{size:9}},grid:{display:false}}}
+    }
+  });
+
+  // ── Gráfico variación mensual — Top 5 más ajustados (no acumulado) ──
+  const AJ_COLORS=['#e24b4a','#185fa5','#ef9f27','#639922','#7c3aed'];
+  const mesLbl=AJUSTES_MESES.map(mk=>{const p=mk.split('-');return['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(p[1])-1]+'-'+p[0].slice(2);});
+  const top5aj=AJUSTES_TOP10.slice(0,5);
+  document.getElementById('legAjustesMensual').innerHTML=top5aj.map((m,i)=>`<div class="li"><div class="lsq" style="background:${AJ_COLORS[i]}"></div>${m.c} · ${m.d.substring(0,28)}</div>`).join('');
+  const mesDesde=mesLbl[0]||'', mesHasta=mesLbl[mesLbl.length-1]||'';
+  document.getElementById('ajMensualSub').textContent=`Ajuste neto por mes (KG), no acumulado · ${mesDesde} – ${mesHasta}`;
+  mkCh('cAjustesMensual',{
+    type:'line',
+    data:{
+      labels:mesLbl,
+      datasets:top5aj.map((m,i)=>({
+        label:m.c,
+        data:m.monthly||[],
+        borderColor:AJ_COLORS[i],
+        backgroundColor:AJ_COLORS[i]+'18',
+        fill:false,tension:0.25,pointRadius:3,borderWidth:2
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:ctx=>{
+          const m=top5aj[ctx.datasetIndex];
+          const v=ctx.parsed.y;
+          const sign=v>=0?'+':'';
+          return m.d.substring(0,30)+': '+sign+v.toLocaleString('es-AR',{maximumFractionDigits:1})+' '+m.um;
+        }
+      }}},
+      scales:{
+        x:{ticks:{color:tc,font:{size:10}},grid:{display:false}},
+        y:{ticks:{color:tc,font:{size:10},callback:v=>v.toLocaleString('es-AR',{maximumFractionDigits:0})},grid:{color:gc}}
+      }
     }
   });
 
@@ -757,7 +940,7 @@ function renderConteos(){
           <div style="font-size:12px;color:var(--text3)">${univ.length?'No corresponde contar en '+selMes:'Sin materiales en el filtro actual'}</div>
         </div>`;
       }
-      const hechos=univ.filter(m=>matState[matKey(m.c,selMes)]);
+      const hechos=univ.filter(m=>estadoConteoMI20(m.c,selMes)==='SI');
       const pct=Math.round(hechos.length/univ.length*100);
       const barColor=pct>=90?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
       return `<div class="card" style="border-top:3px solid ${c.border}">
@@ -771,6 +954,33 @@ function renderConteos(){
     }).join('');
   }
 
+  // Tarjeta: materiales que faltan contar en el mes seleccionado (sobre el filtro activo)
+  const faltWrap=document.getElementById('matFaltantesWrap');
+  if(faltWrap){
+    const faltantes=filt.filter(m=>calShouldCount(m.m1,selMes)&&estadoConteoMI20(m.c,selMes)!=='SI')
+      .map(m=>({...m,estado:estadoConteoMI20(m.c,selMes)}));
+    if(!faltantes.length){
+      faltWrap.innerHTML=`<div class="card" style="border-left:3px solid var(--green)">
+        <div style="font-size:13px;font-weight:500;color:var(--green-text)">✓ No falta nada — todo lo que correspondía contar en ${selMes} ya está contado</div>
+      </div>`;
+    }else{
+      const MAXROWS=25;
+      const filas=faltantes.slice(0,MAXROWS).map(m=>{
+        const cls=m.estado==='NO'?'pc-no':'pc-na';
+        return `<tr><td style="font-family:monospace;font-size:10px">${m.c}</td><td>${m.d}</td><td>${bM(m.m1)}</td><td><span class="${cls}">${m.estado==='NO'?'NO':'Pendiente'}</span></td></tr>`;
+      }).join('');
+      const extra=faltantes.length>MAXROWS?`<div style="font-size:11px;color:var(--text3);padding:6px 4px">…y ${faltantes.length-MAXROWS} más</div>`:'';
+      faltWrap.innerHTML=`<div class="card" style="border-left:3px solid var(--red)">
+        <div style="font-size:13px;font-weight:500;margin-bottom:2px">⚠ Faltan contar — ${selMes}<span class="pill pr" style="margin-left:8px">${faltantes.length}</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Materiales que correspondía contar este mes y todavía no aparecen en MI20 (en ningún almacén), dentro del filtro activo arriba.</div>
+        <div class="sw" style="max-height:220px;overflow-y:auto">
+          <table class="dt"><thead><tr><th>Código</th><th>Descripción</th><th>M1</th><th>Estado</th></tr></thead><tbody>${filas}</tbody></table>
+        </div>
+        ${extra}
+      </div>`;
+    }
+  }
+
   // Resumen % por mes y por clase (12 meses, sobre el filtro activo)
   const resumBody=document.getElementById('matResumenBody');
   if(resumBody){
@@ -779,7 +989,7 @@ function renderConteos(){
       const celdas=CAL_MESES.map(mes=>{
         const debe=calShouldCount(c.cls,mes);
         if(!debe||!univ.length)return '<td><span class="cal-skip">—</span></td>';
-        const hechos=univ.filter(m=>matState[matKey(m.c,mes)]);
+        const hechos=univ.filter(m=>estadoConteoMI20(m.c,mes)==='SI');
         const p=Math.round(hechos.length/univ.length*100);
         const pcls=p>=90?'cal-cls-c':p>=60?'cal-cls-b':'cal-cls-a';
         return `<td><div class="${pcls}">${p}%</div><div style="font-size:9px;color:var(--text3)">${hechos.length}/${univ.length}</div></td>`;
@@ -788,23 +998,20 @@ function renderConteos(){
     }).join('');
   }
 
-  // Tabla de detalle con checkbox por código
+  // Tabla de detalle — estado automático (SI/NO/Pendiente) leído de MI20, ya no es un checkbox manual
   const frec={'A':'Mensual — 12/año','B':'Bimestral — 6/año','C':'Trimestral — 4/año'};
   const accion={'A':'Control estricto · stock seguridad · revisión proveedor','B':'Control moderado · revisar cobertura · conteos rotativos','C':'Control simplificado · evaluar compra bajo pedido'};
   setTb('tConteos',filt.map(m=>{
     const debe=calShouldCount(m.m1,selMes);
-    const checked=matState[matKey(m.c,selMes)]?'checked':'';
-    const chk=debe
-      ? `<label class="cal-chk" title="${m.c} · ${selMes}"><input type="checkbox" ${checked} onchange="matToggle('${m.c}','${selMes}')"><span class="box"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></span></label>`
-      : `<span class="cal-skip">—</span>`;
-    return `<tr><td>${chk}</td><td style="font-family:monospace;font-size:10px">${m.c}</td><td>${m.d}</td><td style="font-size:11px">${m.g}</td><td>${m.u}</td><td>${bM(m.m1)}</td><td style="font-size:11px">${{'A':12,'B':6,'C':4}[m.m1]||4}</td><td style="font-size:11px">${frec[m.m1]||'—'}</td><td style="font-size:11px;color:var(--text2)">${accion[m.m1]||'—'}</td></tr>`;
+    const celda=(alm)=>{
+      if(!debe) return `<span class="pc-na" title="No corresponde contar este mes según su clase ABC">N/A</span>`;
+      const estado=estadoConteoMI20(m.c,selMes,alm);
+      if(estado==='SI') return `<span class="pc-si" title="${m.c} · ${selMes} · almacén ${alm} · fuente: MI20">SI</span>`;
+      if(estado==='NO') return `<span class="pc-no" title="${m.c} · ${selMes} · almacén ${alm} · fuente: MI20">NO</span>`;
+      return `<span class="pc-na" title="Mes en curso, todavía no se puede determinar">N/A</span>`;
+    };
+    return `<tr><td>${celda('2000')}</td><td>${celda('2050')}</td><td style="font-family:monospace;font-size:10px">${m.c}</td><td>${m.d}</td><td style="font-size:11px">${m.g}</td><td>${m.u}</td><td>${bM(m.m1)}</td><td style="font-size:11px">${{'A':12,'B':6,'C':4}[m.m1]||4}</td><td style="font-size:11px">${frec[m.m1]||'—'}</td><td style="font-size:11px;color:var(--text2)">${accion[m.m1]||'—'}</td></tr>`;
   }).join(''));
-}
-function matToggle(codigo,mes){
-  const k=matKey(codigo,mes);
-  matState[k]=!matState[k];
-  renderConteos();
-  syncSave();
 }
 function matSetSync(state,msg){
   const dot=document.getElementById('matDot');
